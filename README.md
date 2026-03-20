@@ -1,6 +1,7 @@
 # world
 
 explore a minimal procedural world under an astronomically accurate night sky.
+object interaction to be added
 
 ## stack
 
