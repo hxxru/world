@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { computeAttenuation } from './attenuation.js';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 export const SKY_CULTURES = [
   { id: 'western', label: 'Western' },
@@ -252,7 +252,11 @@ export function updateConstellationPositions(constellationLines, starField, sunA
 }
 
 export function toggleConstellationLines(constellationLines) {
-  constellationLines.enabled = !constellationLines.enabled;
+  return setConstellationLinesEnabled(constellationLines, !constellationLines.enabled);
+}
+
+export function setConstellationLinesEnabled(constellationLines, enabled) {
+  constellationLines.enabled = enabled;
   constellationLines.lines.visible = constellationLines.enabled;
   return constellationLines.enabled;
 }

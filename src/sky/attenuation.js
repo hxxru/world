@@ -1,4 +1,4 @@
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const HORIZON_FADE_MIN = -3;

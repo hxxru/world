@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const TERRAIN_HALF_SIZE = 2000;
 const CLUSTER_GRID = 180;

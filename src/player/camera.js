@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const MAX_LOOK_UP = THREE.MathUtils.degToRad(85);
 const MAX_LOOK_DOWN = THREE.MathUtils.degToRad(-60);
@@ -20,10 +20,17 @@ function applyCameraRotation(player) {
   player.camera.rotation.z = 0;
 }
 
-function updateLookFromPointer(player, movementX, movementY) {
-  player.yaw += movementX * tuning.player.lookSensitivity;
+function getLookSensitivity(player, profile = player.inputProfile) {
+  return profile === 'touch'
+    ? tuning.player.touchLookSensitivity
+    : tuning.player.desktopLookSensitivity;
+}
+
+function updateLookFromPointer(player, movementX, movementY, profile = player.inputProfile) {
+  const sensitivity = getLookSensitivity(player, profile);
+  player.yaw += movementX * sensitivity;
   player.pitch = clamp(
-    player.pitch + movementY * tuning.player.lookSensitivity,
+    player.pitch + movementY * sensitivity,
     MAX_LOOK_DOWN,
     MAX_LOOK_UP
   );
@@ -31,8 +38,21 @@ function updateLookFromPointer(player, movementX, movementY) {
 }
 
 function movementInputForPlayer(player) {
-  const forward = (player.keys.backward ? 1 : 0) - (player.keys.forward ? 1 : 0);
-  const strafe = (player.keys.left ? 1 : 0) - (player.keys.right ? 1 : 0);
+  if (player.inputBlocked) {
+    player.moveInput.set(0, 0);
+    return player.moveInput;
+  }
+
+  let forward = 0;
+  let strafe = 0;
+
+  if (player.inputProfile === 'touch') {
+    forward = player.touchMove.y;
+    strafe = player.touchMove.x;
+  } else {
+    forward = (player.keys.backward ? 1 : 0) - (player.keys.forward ? 1 : 0);
+    strafe = (player.keys.left ? 1 : 0) - (player.keys.right ? 1 : 0);
+  }
 
   player.moveInput.set(strafe, forward);
 
@@ -57,6 +77,8 @@ export function createPlayerCamera(camera, domElement) {
   const player = {
     camera,
     domElement,
+    inputProfile: 'desktop',
+    inputBlocked: false,
     looking: false,
     lookPointerId: null,
     lastPointerX: 0,
@@ -74,6 +96,7 @@ export function createPlayerCamera(camera, domElement) {
     },
     velocity: new THREE.Vector2(),
     moveInput: new THREE.Vector2(),
+    touchMove: new THREE.Vector2(),
     moveDelta: new THREE.Vector3(),
     verticalOffset: 0,
     verticalVelocity: 0,
@@ -88,7 +111,12 @@ export function createPlayerCamera(camera, domElement) {
   };
 
   const onPointerMove = (event) => {
-    if (!player.looking || event.pointerId !== player.lookPointerId) {
+    if (
+      player.inputBlocked ||
+      player.inputProfile !== 'desktop' ||
+      !player.looking ||
+      event.pointerId !== player.lookPointerId
+    ) {
       return;
     }
 
@@ -101,7 +129,14 @@ export function createPlayerCamera(camera, domElement) {
   };
 
   const onKeyChange = (pressed) => (event) => {
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+    if (
+      player.inputBlocked ||
+      player.inputProfile !== 'desktop' ||
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey
+    ) {
       return;
     }
 
@@ -138,7 +173,7 @@ export function createPlayerCamera(camera, domElement) {
   };
 
   const onCanvasPointerDown = (event) => {
-    if (event.button !== 2) {
+    if (player.inputBlocked || player.inputProfile !== 'desktop' || event.button !== 2) {
       return;
     }
 
@@ -169,6 +204,7 @@ export function createPlayerCamera(camera, domElement) {
 
   const onWindowBlur = () => {
     clearMovementKeys();
+    player.touchMove.set(0, 0);
     player.looking = false;
     player.lookPointerId = null;
   };
@@ -207,6 +243,7 @@ export function setPlayerSpawn(player, spawnState) {
   player.bounds = spawnState.bounds;
   player.velocity.set(0, 0);
   player.moveInput.set(0, 0);
+  player.touchMove.set(0, 0);
   player.verticalOffset = 0;
   player.verticalVelocity = 0;
   player.grounded = true;
@@ -232,6 +269,47 @@ export function lookPlayerAt(player, observerPosition, targetPosition) {
   player.pitch = clamp(Math.asin(clamp(direction.y, -1, 1)), MAX_LOOK_DOWN, MAX_LOOK_UP);
   player.yaw = Math.atan2(direction.x, direction.z);
   applyCameraRotation(player);
+}
+
+export function lookPlayerByDelta(player, movementX, movementY, profile = player.inputProfile) {
+  if (player.inputBlocked) {
+    return;
+  }
+
+  updateLookFromPointer(player, movementX, movementY, profile);
+}
+
+export function requestPlayerJump(player) {
+  if (player.inputBlocked) {
+    return;
+  }
+
+  tryJump(player);
+}
+
+export function setPlayerTouchMovement(player, x, y) {
+  player.touchMove.set(clamp(x, -1, 1), clamp(-y, -1, 1));
+}
+
+export function setPlayerInputProfile(player, inputProfile) {
+  player.inputProfile = inputProfile;
+  player.touchMove.set(0, 0);
+  player.looking = false;
+  player.lookPointerId = null;
+}
+
+export function setPlayerInputBlocked(player, blocked) {
+  player.inputBlocked = blocked;
+
+  if (blocked) {
+    player.keys.forward = false;
+    player.keys.backward = false;
+    player.keys.left = false;
+    player.keys.right = false;
+    player.touchMove.set(0, 0);
+    player.looking = false;
+    player.lookPointerId = null;
+  }
 }
 
 export function updatePlayer(player, { terrain = null, spawnState = null, deltaTime = 0 } = {}) {

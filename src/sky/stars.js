@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { computeAttenuation } from './attenuation.js';
 import { equatorialToHorizontal, horizontalToCartesian, precessRADec } from './coordinates.js';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const STAR_RADIUS = 1000;
 const MIN_STAR_SIZE = 1.2;
@@ -258,6 +258,14 @@ export function togglePolarisMarker(polarisMarker) {
     return false;
   }
 
-  polarisMarker.marker.visible = !polarisMarker.marker.visible;
+  return setPolarisMarkerVisible(polarisMarker, !polarisMarker.marker.visible);
+}
+
+export function setPolarisMarkerVisible(polarisMarker, visible) {
+  if (!polarisMarker) {
+    return false;
+  }
+
+  polarisMarker.marker.visible = visible;
   return polarisMarker.marker.visible;
 }

@@ -1,4 +1,5 @@
-const STRIP_WIDTH = 400;
+const MAX_STRIP_WIDTH = 400;
+const MIN_STRIP_WIDTH = 220;
 const TICK_STEP_DEGREES = 15;
 const TICK_SPACING = 16;
 const FULL_CIRCLE_DEGREES = 360;
@@ -20,6 +21,10 @@ let activeCompass = null;
 
 function normalizeDegrees(degrees) {
   return ((degrees % FULL_CIRCLE_DEGREES) + FULL_CIRCLE_DEGREES) % FULL_CIRCLE_DEGREES;
+}
+
+function resolveStripWidth() {
+  return Math.max(MIN_STRIP_WIDTH, Math.min(MAX_STRIP_WIDTH, window.innerWidth - 48));
 }
 
 function createTick(degrees) {
@@ -92,9 +97,10 @@ function buildSequence() {
 }
 
 export function createCompass() {
+  const stripWidth = resolveStripWidth();
   const root = document.createElement('div');
   root.style.position = 'fixed';
-  root.style.top = '16px';
+  root.style.top = 'max(16px, env(safe-area-inset-top))';
   root.style.left = '50%';
   root.style.transform = 'translateX(-50%)';
   root.style.zIndex = '10';
@@ -104,7 +110,7 @@ export function createCompass() {
   root.style.pointerEvents = 'none';
 
   const frame = document.createElement('div');
-  frame.style.width = `${STRIP_WIDTH}px`;
+  frame.style.width = `${stripWidth}px`;
   frame.style.height = '30px';
   frame.style.overflow = 'hidden';
   frame.style.padding = '4px 0';
@@ -133,7 +139,7 @@ export function createCompass() {
 
   document.body.appendChild(root);
 
-  activeCompass = { root, content, heading };
+  activeCompass = { root, frame, content, heading, stripWidth };
   return activeCompass;
 }
 
@@ -142,9 +148,15 @@ export function updateCompass(yawRadians) {
     return;
   }
 
+  const nextStripWidth = resolveStripWidth();
+  if (nextStripWidth !== activeCompass.stripWidth) {
+    activeCompass.stripWidth = nextStripWidth;
+    activeCompass.frame.style.width = `${nextStripWidth}px`;
+  }
+
   const headingDegrees = normalizeDegrees((yawRadians * 180) / Math.PI);
   const progress = headingDegrees / TICK_STEP_DEGREES;
-  const offset = STRIP_WIDTH * 0.5 - SEQUENCE_WIDTH - progress * TICK_SPACING;
+  const offset = activeCompass.stripWidth * 0.5 - SEQUENCE_WIDTH - progress * TICK_SPACING;
 
   activeCompass.content.style.transform = `translateX(${offset}px)`;
   activeCompass.heading.textContent = `${Math.round(headingDegrees)}°`;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const WATER_LEVEL = 0;
 const DEGREES_TO_RADIANS = Math.PI / 180;

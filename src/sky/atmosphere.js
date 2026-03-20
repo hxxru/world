@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { computeAttenuation } from './attenuation.js';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const ATMOSPHERE_RADIUS = 4200;
 const ZENITH_DAY = new THREE.Color('#5e98ff');

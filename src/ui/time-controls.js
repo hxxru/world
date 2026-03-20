@@ -35,7 +35,7 @@ export function createTimeControls({ onJump, onTogglePause, onSpeedChange } = {}
   const root = document.createElement('div');
   root.style.position = 'fixed';
   root.style.right = '16px';
-  root.style.bottom = '14px';
+  root.style.bottom = 'max(14px, env(safe-area-inset-bottom))';
   root.style.zIndex = '10';
   root.style.display = 'flex';
   root.style.flexDirection = 'column';
@@ -102,7 +102,7 @@ export function createTimeControls({ onJump, onTogglePause, onSpeedChange } = {}
 
   document.body.appendChild(root);
 
-  return { root, pauseButton, speedSlider };
+  return { root, strip, pauseButton, speedSlider, profile: 'desktop' };
 }
 
 export function updateTimeControls(controls, state = {}) {
@@ -131,5 +131,25 @@ export function updateTimeControls(controls, state = {}) {
 
     controls.speedSlider.value = String(nearestIndex);
     controls.speedSlider.title = `Time speed ${magnitude}x`;
+  }
+}
+
+export function setTimeControlsProfile(controls, profile = 'desktop') {
+  controls.profile = profile;
+  const isTouch = profile === 'touch';
+
+  controls.root.style.left = isTouch ? '16px' : '';
+  controls.root.style.right = '16px';
+  controls.strip.style.padding = isTouch ? '10px' : '6px';
+  controls.strip.style.gap = isTouch ? '6px' : '4px';
+
+  for (const button of controls.strip.querySelectorAll('button')) {
+    button.style.minWidth = isTouch ? '36px' : '28px';
+    button.style.height = isTouch ? '34px' : '24px';
+    button.style.fontSize = isTouch ? '12px' : '10px';
+  }
+
+  if (controls.speedSlider) {
+    controls.speedSlider.style.height = isTouch ? '28px' : '';
   }
 }

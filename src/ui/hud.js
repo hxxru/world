@@ -27,10 +27,10 @@ function formatDegrees(value) {
   return `${rounded}\u00b0`;
 }
 
-export function createHud() {
+export function createHud({ visible = true } = {}) {
   const root = document.createElement('div');
   root.style.position = 'fixed';
-  root.style.top = '16px';
+  root.style.top = 'max(16px, env(safe-area-inset-top))';
   root.style.right = '16px';
   root.style.zIndex = '10';
   root.style.pointerEvents = 'none';
@@ -51,10 +51,12 @@ export function createHud() {
   root.appendChild(content);
   document.body.appendChild(root);
 
+  root.style.display = visible ? 'block' : 'none';
+
   return {
     root,
     content,
-    visible: true,
+    visible,
   };
 }
 
@@ -80,8 +82,12 @@ export function updateHud(hud, state) {
     sunMoonSection;
 }
 
-export function toggleHud(hud) {
-  hud.visible = !hud.visible;
+export function setHudVisible(hud, visible) {
+  hud.visible = visible;
   hud.root.style.display = hud.visible ? 'block' : 'none';
   return hud.visible;
+}
+
+export function toggleHud(hud) {
+  return setHudVisible(hud, !hud.visible);
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { computeAttenuation } from '../sky/attenuation.js';
 import { setHighlightedConstellation } from '../sky/constellations.js';
-import { tuning } from './debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const NAMED_STAR_MAGNITUDE_LIMIT = 3;
 const SCREEN_MARGIN = 24;
@@ -39,7 +39,7 @@ function distanceToSegment(pointX, pointY, startX, startY, endX, endY) {
   return Math.hypot(pointX - nearestX, pointY - nearestY);
 }
 
-export function createLabels({ starField, planets, sunMoon }) {
+export function createLabels({ starField, planets, sunMoon, hoverEnabled = true }) {
   const root = document.createElement('div');
   root.style.position = 'fixed';
   root.style.inset = '0';
@@ -77,8 +77,10 @@ export function createLabels({ starField, planets, sunMoon }) {
     hover.style.display = 'none';
   };
 
-  window.addEventListener('pointermove', onPointerMove);
-  window.addEventListener('pointerleave', onPointerLeave);
+  if (hoverEnabled) {
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerleave', onPointerLeave);
+  }
 
   // `star.name` currently includes fallback catalog designations for many dim stars.
   // Limit hover targets to bright familiar names so the screen-space search stays compact.
@@ -129,6 +131,7 @@ export function createLabels({ starField, planets, sunMoon }) {
   return {
     root,
     hover,
+    hoverEnabled,
     mouse,
     starTargets,
     bodyTargets,
@@ -145,6 +148,15 @@ export function createLabels({ starField, planets, sunMoon }) {
 }
 
 export function updateLabels(labels, { starField, camera, sunAltitude = -90, constellationLines = null }) {
+  if (!labels.hoverEnabled) {
+    for (const label of labels.permanentLabels) {
+      label.style.visibility = '';
+    }
+    setHighlightedConstellation(constellationLines, null);
+    labels.hover.style.display = 'none';
+    return;
+  }
+
   if (!labels.mouse.active) {
     for (const label of labels.permanentLabels) {
       label.style.visibility = '';

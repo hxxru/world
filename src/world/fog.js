@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const LAND_DAY_FOG = new THREE.Color('#d7d5c9');
 const LAND_NIGHT_FOG = new THREE.Color('#0a1120');

@@ -3,7 +3,7 @@ import * as Astronomy from 'astronomy-engine';
 
 import { computeAttenuation } from './attenuation.js';
 import { equatorialToHorizontal, horizontalToCartesian } from './coordinates.js';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const PLANET_RADIUS = 1000;
 const J2000_JD = 2451545.0;

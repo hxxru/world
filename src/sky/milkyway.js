@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { computeAttenuation } from './attenuation.js';
 import { equatorialToHorizontal, horizontalToCartesian, precessRADec } from './coordinates.js';
-import { tuning } from '../ui/debug-panel.js';
+import { tuning } from '../config/runtime-config.js';
 
 const MILKY_WAY_RADIUS = 998;
 const WIDTH_SEGMENTS = 256;

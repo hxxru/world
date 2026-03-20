@@ -17,6 +17,7 @@ import {
   destroyConstellationLines,
   loadSkyCultureData,
   SKY_CULTURES,
+  setConstellationLinesEnabled,
   toggleConstellationLines,
   updateConstellationVisibility,
   updateConstellationPositions,
@@ -27,6 +28,7 @@ import {
   createPolarisMarker,
   createStarField,
   loadStarCatalog,
+  setPolarisMarkerVisible,
   togglePolarisMarker,
   updatePolarisMarker,
   updateStarVisibility,
@@ -51,13 +53,28 @@ import {
   setClockJD,
   tickClock,
 } from './time/clock.js';
-import { createDebugPanel, toggleDebugPanel, tuning } from './ui/debug-panel.js';
+import { getPreferences, updatePreferences } from './config/preferences.js';
+import { setTuningValue, tuning } from './config/runtime-config.js';
 import { createCompass, updateCompass } from './ui/compass.js';
-import { createHud, toggleHud, updateHud } from './ui/hud.js';
+import { createHud, setHudVisible, toggleHud, updateHud } from './ui/hud.js';
+import { createInfoModal } from './ui/info-modal.js';
 import { createInputPanel, updateInputPanel } from './ui/input-panel.js';
 import { createLabels, updateLabels } from './ui/labels.js';
-import { createTimeControls, updateTimeControls } from './ui/time-controls.js';
-import { createPlayerCamera, lookPlayerAt, setPlayerSpawn, updatePlayer } from './player/camera.js';
+import { createSettingsModal } from './ui/settings-modal.js';
+import { createTimeControls, setTimeControlsProfile, updateTimeControls } from './ui/time-controls.js';
+import { createTouchControls } from './ui/touch-controls.js';
+import { createUtilityButtons } from './ui/utility-buttons.js';
+import {
+  createPlayerCamera,
+  lookPlayerAt,
+  lookPlayerByDelta,
+  requestPlayerJump,
+  setPlayerInputBlocked,
+  setPlayerInputProfile,
+  setPlayerSpawn,
+  setPlayerTouchMovement,
+  updatePlayer,
+} from './player/camera.js';
 import { spawnPlayer } from './player/spawn.js';
 import { createBoat, updateBoatLighting, updateBoatMotion } from './world/boat.js';
 import { createWorldFog, updateWorldFog } from './world/fog.js';
@@ -86,6 +103,14 @@ const OCEAN_WATER_OPTIONS = {
   waterNight: '#02070f',
 };
 const SPAWN_OVERRIDE_SEQUENCE = [null, 'ocean', 'land'];
+const INPUT_PROFILE_QUERY = window.matchMedia('(pointer: coarse)');
+
+let preferences = getPreferences();
+setTuningValue('player.desktopLookSensitivity', preferences.desktopLookSensitivity);
+setTuningValue('player.touchLookSensitivity', preferences.touchLookSensitivity);
+setTuningValue('bloom.strength', preferences.bloomStrength);
+setTuningValue('stars.limitingMagnitude', preferences.starLimitingMagnitude);
+setTuningValue('constellationLines.opacity', preferences.constellationOpacity);
 
 // --- scene setup ---
 const scene = new THREE.Scene();
@@ -102,7 +127,7 @@ camera.up.set(0, 1, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
@@ -133,18 +158,22 @@ let worldFog = null;
 let polarisMarker = null;
 let clock = null;
 let hud = null;
-let debugPanel = null;
 let compass = null;
 let inputPanel = null;
 let labels = null;
 let timeControls = null;
 let player = null;
+let settingsModal = null;
+let infoModal = null;
+let utilityButtons = null;
+let touchControls = null;
 let currentLST = 0;
 let lastFrameTime = null;
 let fps = 0;
 let spawnState = null;
 let spawnModeOverride = null;
 let currentSkyCulture = SKY_CULTURES[0];
+let inputProfile = detectInputProfile();
 let observerLatitude = INITIAL_OBSERVER_LATITUDE;
 let observerLongitude = INITIAL_OBSERVER_LONGITUDE;
 const observerWorldPosition = new THREE.Vector3();
@@ -225,6 +254,107 @@ function isEditableTarget(target) {
   }
 
   return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
+}
+
+function detectInputProfile() {
+  return INPUT_PROFILE_QUERY.matches || navigator.maxTouchPoints > 0 ? 'touch' : 'desktop';
+}
+
+function isModalOpen() {
+  return Boolean(settingsModal?.visible || infoModal?.visible);
+}
+
+function refreshSettingsModal() {
+  settingsModal?.refresh({
+    inputProfile,
+    ...preferences,
+  });
+}
+
+function syncInteractiveState() {
+  const blocked = isModalOpen();
+  if (player) {
+    setPlayerInputBlocked(player, blocked);
+  }
+  touchControls?.setBlocked(blocked);
+  renderer.domElement.style.touchAction = inputProfile === 'touch' ? 'none' : 'auto';
+}
+
+function applyHudPreference(visible, { persist = true } = {}) {
+  if (hud) {
+    setHudVisible(hud, visible);
+  }
+
+  if (persist) {
+    preferences = updatePreferences({ hudVisible: visible });
+    refreshSettingsModal();
+  }
+
+  return visible;
+}
+
+function applyConstellationPreference(visible, { persist = true } = {}) {
+  if (constellationLines) {
+    setConstellationLinesEnabled(constellationLines, visible);
+  }
+
+  if (persist) {
+    preferences = updatePreferences({ constellationsVisible: visible });
+    refreshSettingsModal();
+  }
+
+  return visible;
+}
+
+function applyPolarisPreference(visible, { persist = true } = {}) {
+  if (polarisMarker) {
+    setPolarisMarkerVisible(polarisMarker, visible);
+  }
+
+  if (persist) {
+    preferences = updatePreferences({ polarisVisible: visible });
+    refreshSettingsModal();
+  }
+
+  return visible;
+}
+
+function applySensitivityPreference(path, preferenceKey, value) {
+  setTuningValue(path, value);
+  preferences = updatePreferences({ [preferenceKey]: value });
+  refreshSettingsModal();
+}
+
+function applySceneTuningPreference(path, preferenceKey, value) {
+  setTuningValue(path, value);
+  preferences = updatePreferences({ [preferenceKey]: value });
+  refreshSettingsModal();
+}
+
+function setInputProfile(nextProfile) {
+  inputProfile = nextProfile;
+  if (player) {
+    setPlayerInputProfile(player, inputProfile);
+  }
+  if (labels) {
+    labels.hoverEnabled = inputProfile === 'desktop';
+  }
+  touchControls?.setProfile(inputProfile);
+  if (timeControls) {
+    setTimeControlsProfile(timeControls, inputProfile);
+  }
+  refreshSettingsModal();
+  syncInteractiveState();
+}
+
+function openSettings() {
+  infoModal?.setOpen(false);
+  settingsModal?.setOpen(true);
+}
+
+function openInfo() {
+  settingsModal?.setOpen(false);
+  infoModal?.setOpen(true);
 }
 
 function shiftGregorianByMonth(gregorian, monthDelta) {
@@ -637,10 +767,10 @@ async function init() {
 
   polarisMarker = createPolarisMarker(scene, starField);
   constellationLines = createConstellationLines(scene, skyCultureData.constellations, starCatalog);
-  hud = createHud();
-  debugPanel = createDebugPanel();
+  hud = createHud({ visible: preferences.hudVisible });
   compass = createCompass();
   labels = createLabels({ starField, planets, sunMoon });
+  labels.hoverEnabled = inputProfile === 'desktop';
   clock = createClock(J2000_JD);
   inputPanel = createInputPanel({
     skyCultures: SKY_CULTURES,
@@ -697,6 +827,65 @@ async function init() {
       setClockSpeed(clock, sign * speed);
     },
   });
+  setTimeControlsProfile(timeControls, inputProfile);
+
+  settingsModal = createSettingsModal({
+    onToggleHud: () => {
+      applyHudPreference(!hud.visible);
+    },
+    onToggleConstellations: () => {
+      applyConstellationPreference(!constellationLines.enabled);
+    },
+    onTogglePolaris: () => {
+      applyPolarisPreference(!(polarisMarker?.marker.visible ?? false));
+    },
+    onOpenInfo: () => {
+      openInfo();
+    },
+    onDesktopLookSensitivityChange: (value) => {
+      applySensitivityPreference('player.desktopLookSensitivity', 'desktopLookSensitivity', value);
+    },
+    onTouchLookSensitivityChange: (value) => {
+      applySensitivityPreference('player.touchLookSensitivity', 'touchLookSensitivity', value);
+    },
+    onBloomStrengthChange: (value) => {
+      applySceneTuningPreference('bloom.strength', 'bloomStrength', value);
+    },
+    onStarLimitingMagnitudeChange: (value) => {
+      applySceneTuningPreference('stars.limitingMagnitude', 'starLimitingMagnitude', value);
+    },
+    onConstellationOpacityChange: (value) => {
+      applySceneTuningPreference('constellationLines.opacity', 'constellationOpacity', value);
+    },
+  });
+  infoModal = createInfoModal();
+  utilityButtons = createUtilityButtons({
+    onOpenSettings: openSettings,
+    onOpenInfo: openInfo,
+  });
+  touchControls = createTouchControls({
+    onMove: (x, y) => {
+      setPlayerTouchMovement(player, x, y);
+    },
+    onLook: (deltaX, deltaY) => {
+      lookPlayerByDelta(player, deltaX, deltaY, 'touch');
+    },
+    onJump: () => {
+      requestPlayerJump(player);
+    },
+  });
+  touchControls.setProfile(inputProfile);
+  settingsModal.onOpenChange(() => {
+    refreshSettingsModal();
+    syncInteractiveState();
+  });
+  infoModal.onOpenChange((visible) => {
+    if (!visible && !preferences.hasSeenHelp) {
+      preferences = updatePreferences({ hasSeenHelp: true });
+    }
+    refreshSettingsModal();
+    syncInteractiveState();
+  });
 
   const jd = julianDate(2000, 1, 1, 12);
 
@@ -707,10 +896,28 @@ async function init() {
   currentLST = localSiderealTime(getClockGMST(clock), observerLongitude);
   updateObserverWorldPosition();
   lookPlayerAt(player, observerWorldPosition, initialLookTarget);
+  setInputProfile(inputProfile);
+  applyConstellationPreference(preferences.constellationsVisible, { persist: false });
+  applyPolarisPreference(preferences.polarisVisible, { persist: false });
+  refreshSettingsModal();
   syncSceneState(0);
+
+  if (!preferences.hasSeenHelp) {
+    openInfo();
+  }
 }
 
 window.addEventListener('keydown', (event) => {
+  if (event.code === 'Escape' && isModalOpen()) {
+    settingsModal?.setOpen(false);
+    infoModal?.setOpen(false);
+    return;
+  }
+
+  if (isModalOpen()) {
+    return;
+  }
+
   if (isEditableTarget(event.target) && event.code !== 'Escape') {
     return;
   }
@@ -726,18 +933,28 @@ window.addEventListener('keydown', (event) => {
 
   if ((event.code === 'KeyH' || event.code === 'Digit9') && hud) {
     const visible = toggleHud(hud);
+    preferences = updatePreferences({ hudVisible: visible });
+    refreshSettingsModal();
     console.info(`HUD ${visible ? 'shown' : 'hidden'}.`);
     return;
   }
 
-  if (event.code === 'Backquote' && debugPanel) {
+  if (event.code === 'Backquote') {
     event.preventDefault();
-    toggleDebugPanel(debugPanel);
+    openSettings();
+    return;
+  }
+
+  if (event.code === 'KeyI') {
+    event.preventDefault();
+    openInfo();
     return;
   }
 
   if (event.code === 'KeyP') {
     const visible = togglePolarisMarker(polarisMarker);
+    preferences = updatePreferences({ polarisVisible: visible });
+    refreshSettingsModal();
     console.info(`Polaris marker ${visible ? 'shown' : 'hidden'}.`);
     return;
   }
@@ -752,14 +969,27 @@ window.addEventListener('keydown', (event) => {
   }
 
   const visible = toggleConstellationLines(constellationLines);
+  preferences = updatePreferences({ constellationsVisible: visible });
+  refreshSettingsModal();
   console.info(`Constellation lines ${visible ? 'shown' : 'hidden'}.`);
 });
+
+const handleInputProfileChange = () => {
+  setInputProfile(detectInputProfile());
+};
+
+if (typeof INPUT_PROFILE_QUERY.addEventListener === 'function') {
+  INPUT_PROFILE_QUERY.addEventListener('change', handleInputProfileChange);
+} else if (typeof INPUT_PROFILE_QUERY.addListener === 'function') {
+  INPUT_PROFILE_QUERY.addListener(handleInputProfileChange);
+}
 
 // --- handle resize ---
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   composer.setSize(window.innerWidth, window.innerHeight);
   bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
