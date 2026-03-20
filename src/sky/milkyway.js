@@ -76,7 +76,7 @@ async function loadTexture(url) {
   return texture;
 }
 
-export async function createMilkyWay(scene, url = '/data/ESA_Gaia.png') {
+export async function createMilkyWay(scene, url = '${import.meta.env.BASE_URL}/data/ESA_Gaia.png') {
   const geometry = buildMilkyWayGeometry(MILKY_WAY_RADIUS, WIDTH_SEGMENTS, HEIGHT_SEGMENTS);
   const texture = await loadTexture(url);
   const material = new THREE.ShaderMaterial({

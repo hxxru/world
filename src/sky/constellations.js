@@ -45,7 +45,7 @@ function normalizeSkyCultureData(rawData, skyCultureId) {
   }));
 }
 
-export async function loadConstellationData(url = '/data/constellations.json') {
+export async function loadConstellationData(url = '${import.meta.env.BASE_URL}data/constellations.json') {
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -64,8 +64,8 @@ export async function loadSkyCultureData(skyCultureId = 'western') {
 
   const url =
     skyCultureId === 'western'
-      ? '/data/constellations.json'
-      : `/data/skycultures/${skyCultureId}.json`;
+      ? '${import.meta.env.BASE_URL}data/constellations.json'
+      : `${import.meta.env.BASE_URL}data/skycultures/${skyCultureId}.json`;
   const rawData = await loadConstellationData(url);
 
   return {
