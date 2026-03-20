@@ -64,7 +64,7 @@ export async function loadSkyCultureData(skyCultureId = 'western') {
 
   const url =
     skyCultureId === 'western'
-      ? '${import.meta.env.BASE_URL}data/constellations.json'
+      ? `${import.meta.env.BASE_URL}data/constellations.json`
       : `${import.meta.env.BASE_URL}data/skycultures/${skyCultureId}.json`;
   const rawData = await loadConstellationData(url);
 

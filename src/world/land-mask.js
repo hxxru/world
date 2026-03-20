@@ -18,7 +18,7 @@ function normalizeLongitude(longitude) {
   return normalized;
 }
 
-export async function loadLandMask(url = '${import.meta.env.BASE_URL}data/land-mask.png') {
+export async function loadLandMask(url = `${import.meta.env.BASE_URL}data/land-mask.png`) {
   const textureLoader = new THREE.TextureLoader();
 
   return new Promise((resolve, reject) => {

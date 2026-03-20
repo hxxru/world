@@ -88,7 +88,7 @@ function buildInstanceMatrix(position, scale, target, dummy) {
   return dummy.matrix;
 }
 
-export async function loadStarCatalog(url = '${import.meta.env.BASE_URL}data/bsc5.json') {
+export async function loadStarCatalog(url = `${import.meta.env.BASE_URL}data/bsc5.json`) {
   const response = await fetch(url);
 
   if (!response.ok) {
