@@ -1,5 +1,62 @@
 import { createModal } from './modal.js';
 
+function pad(value, width = 2) {
+  return String(Math.abs(value)).padStart(width, '0');
+}
+
+function formatYear(year) {
+  if (year >= 0) {
+    return String(year).padStart(4, '0');
+  }
+
+  return `-${pad(year, 4)}`;
+}
+
+function formatDateForInput(gregorian) {
+  return `${formatYear(gregorian.year)}-${pad(gregorian.month)}-${pad(gregorian.day)}`;
+}
+
+function formatDegrees(value, digits = 3) {
+  return value >= 0 ? `+${value.toFixed(digits)}` : value.toFixed(digits);
+}
+
+function setFieldValueIfIdle(field, value) {
+  if (document.activeElement !== field) {
+    field.value = value;
+  }
+}
+
+function styleField(input) {
+  input.style.width = '100%';
+  input.style.padding = '8px 10px';
+  input.style.border = '1px solid rgba(212, 168, 87, 0.2)';
+  input.style.borderRadius = '10px';
+  input.style.background = 'rgba(255, 255, 255, 0.03)';
+  input.style.color = '#f5e6c8';
+  input.style.fontFamily = '"Space Mono", "IBM Plex Mono", monospace';
+  input.style.fontSize = '11px';
+  input.style.outline = 'none';
+  input.style.boxSizing = 'border-box';
+}
+
+function createLabeledField(root, labelText, input) {
+  const wrapper = document.createElement('label');
+  wrapper.style.display = 'block';
+  wrapper.style.marginBottom = '10px';
+
+  const label = document.createElement('div');
+  label.textContent = labelText;
+  label.style.marginBottom = '5px';
+  label.style.fontSize = '10px';
+  label.style.letterSpacing = '0.06em';
+  label.style.textTransform = 'uppercase';
+  label.style.color = '#d4a857';
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(input);
+  root.appendChild(wrapper);
+}
+
 function createSection(root, title, description = '') {
   const section = document.createElement('section');
   section.style.marginBottom = '18px';
@@ -116,6 +173,46 @@ function createActionRow(root, { label, description, shortcut, buttonLabel, onCl
   return button;
 }
 
+function createPresetButtonsRow(root, { label, description, presets = [], onSelect }) {
+  const wrapper = document.createElement('div');
+  wrapper.style.padding = '10px 0';
+  wrapper.style.borderTop = '1px solid rgba(212, 168, 87, 0.1)';
+
+  wrapper.appendChild(createMeta(label, description));
+
+  const buttons = document.createElement('div');
+  buttons.style.display = 'flex';
+  buttons.style.flexWrap = 'wrap';
+  buttons.style.gap = '8px';
+  buttons.style.marginTop = '8px';
+  wrapper.appendChild(buttons);
+
+  const entries = presets.map((preset) => {
+    const button = createActionButton(preset.label);
+    button.style.minWidth = '64px';
+    button.addEventListener('click', () => {
+      onSelect?.(preset.value);
+    });
+    buttons.appendChild(button);
+    return {
+      ...preset,
+      button,
+    };
+  });
+
+  root.appendChild(wrapper);
+
+  return {
+    setActive(value) {
+      for (const entry of entries) {
+        const active = entry.value === value;
+        entry.button.style.background = active ? 'rgba(212, 168, 87, 0.18)' : 'rgba(255, 255, 255, 0.03)';
+        entry.button.style.borderColor = active ? 'rgba(212, 168, 87, 0.46)' : 'rgba(212, 168, 87, 0.24)';
+      }
+    },
+  };
+}
+
 function createRangeRow(root, { label, description, min, max, step, suffix = '', onInput }) {
   const wrapper = document.createElement('label');
   wrapper.style.display = 'block';
@@ -164,10 +261,13 @@ function createRangeRow(root, { label, description, min, max, step, suffix = '',
 }
 
 export function createSettingsModal({
+  skyCultures = [],
+  onApplyObserverSettings,
   onToggleHud,
   onToggleConstellations,
   onTogglePolaris,
   onOpenInfo,
+  onTimeSpeedChange,
   onDesktopLookSensitivityChange,
   onTouchLookSensitivityChange,
   onBloomStrengthChange,
@@ -183,11 +283,80 @@ export function createSettingsModal({
   intro.textContent = 'Persistent display and control settings. Keyboard shortcuts still work on desktop.';
   body.appendChild(intro);
 
+  const observerSection = createSection(body, 'Observer', 'Current viewpoint, date, and sky culture.');
+  const observerCurrent = document.createElement('div');
+  observerCurrent.style.marginBottom = '10px';
+  observerCurrent.style.fontSize = '10px';
+  observerCurrent.style.lineHeight = '1.45';
+  observerCurrent.style.color = '#d7c6a0';
+  observerSection.appendChild(observerCurrent);
+
+  const observerForm = document.createElement('form');
+  observerSection.appendChild(observerForm);
+
+  const latitude = document.createElement('input');
+  latitude.type = 'number';
+  latitude.min = '-90';
+  latitude.max = '90';
+  latitude.step = '0.0001';
+  styleField(latitude);
+  createLabeledField(observerForm, 'Latitude', latitude);
+
+  const longitude = document.createElement('input');
+  longitude.type = 'number';
+  longitude.min = '-180';
+  longitude.max = '180';
+  longitude.step = '0.0001';
+  styleField(longitude);
+  createLabeledField(observerForm, 'Longitude', longitude);
+
+  const date = document.createElement('input');
+  date.type = 'text';
+  styleField(date);
+  createLabeledField(observerForm, 'Date', date);
+
+  const skyCulture = document.createElement('select');
+  styleField(skyCulture);
+  skyCulture.style.cursor = 'pointer';
+  for (const culture of skyCultures) {
+    const option = document.createElement('option');
+    option.value = culture.id;
+    option.textContent = culture.label;
+    option.style.background = '#0b111a';
+    option.style.color = '#f5e6c8';
+    skyCulture.appendChild(option);
+  }
+  createLabeledField(observerForm, 'Sky Culture', skyCulture);
+
+  const observerSubmit = document.createElement('button');
+  observerSubmit.type = 'submit';
+  observerSubmit.textContent = 'Apply observer';
+  observerSubmit.style.width = '100%';
+  observerSubmit.style.padding = '10px 12px';
+  observerSubmit.style.border = '1px solid rgba(212, 168, 87, 0.3)';
+  observerSubmit.style.borderRadius = '10px';
+  observerSubmit.style.background = 'rgba(212, 168, 87, 0.12)';
+  observerSubmit.style.color = '#f5e6c8';
+  observerSubmit.style.fontFamily = 'inherit';
+  observerSubmit.style.fontSize = '11px';
+  observerSubmit.style.cursor = 'pointer';
+  observerForm.appendChild(observerSubmit);
+
+  observerForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    onApplyObserverSettings?.({
+      latitude: latitude.value.trim(),
+      longitude: longitude.value.trim(),
+      date: date.value.trim(),
+      skyCultureId: skyCulture.value,
+    });
+  });
+
   const displaySection = createSection(body, 'Display');
   const hudToggle = createToggleRow(displaySection, {
     label: 'HUD',
     description: 'Date, time, observer coordinates, and body telemetry.',
-    shortcut: 'H / 9',
+    shortcut: 'H',
     onToggle: onToggleHud,
   });
   const constellationToggle = createToggleRow(displaySection, {
@@ -199,7 +368,7 @@ export function createSettingsModal({
   const polarisToggle = createToggleRow(displaySection, {
     label: 'Polaris marker',
     description: 'Diagnostic marker for north-star alignment.',
-    shortcut: 'P',
+    shortcut: 'M',
     onToggle: onTogglePolaris,
   });
 
@@ -217,6 +386,26 @@ export function createSettingsModal({
     shortcut: 'I',
     buttonLabel: 'Open',
     onClick: onOpenInfo,
+  });
+  createActionRow(controlsSection, {
+    label: 'Play / pause',
+    description: 'Toggle time playback without touching the time strip.',
+    shortcut: 'P',
+    buttonLabel: 'Toggle',
+    onClick: onTimeSpeedChange ? () => onTimeSpeedChange('toggle-pause') : undefined,
+  });
+
+  const timeSection = createSection(body, 'Time Speed', 'Keyboard presets mirror the number row shortcuts.');
+  const timeSpeedPresets = createPresetButtonsRow(timeSection, {
+    label: 'Playback speed',
+    description: '1, 2, 3, and 4 map to 1x, 60x, 360x, and 3600x.',
+    presets: [
+      { label: '1x', value: 1 },
+      { label: '60x', value: 60 },
+      { label: '360x', value: 360 },
+      { label: '3600x', value: 3600 },
+    ],
+    onSelect: onTimeSpeedChange,
   });
 
   const sensitivitySection = createSection(body, 'Sensitivity');
@@ -266,10 +455,20 @@ export function createSettingsModal({
   return {
     ...modal,
     refresh(state) {
+      const dateValue = formatDateForInput(state.gregorian);
+      observerCurrent.textContent =
+        `current:\nlat ${formatDegrees(state.latitude)}\nlon ${formatDegrees(state.longitude)}\ndate ${dateValue}\nculture ${state.skyCultureLabel}`;
+      setFieldValueIfIdle(latitude, state.latitude.toFixed(4));
+      setFieldValueIfIdle(longitude, state.longitude.toFixed(4));
+      setFieldValueIfIdle(date, dateValue);
+      if (document.activeElement !== skyCulture) {
+        skyCulture.value = state.skyCultureId;
+      }
       hudToggle.textContent = state.hudVisible ? 'On' : 'Off';
       constellationToggle.textContent = state.constellationsVisible ? 'On' : 'Off';
       polarisToggle.textContent = state.polarisVisible ? 'On' : 'Off';
       profileRow.textContent = `Active input profile: ${state.inputProfile}`;
+      timeSpeedPresets.setActive(Math.abs(state.speedMultiplier));
       desktopLook.setValue(Number(state.desktopLookSensitivity.toFixed(4)));
       touchLook.setValue(Number(state.touchLookSensitivity.toFixed(4)));
       bloomStrength.setValue(Number(state.bloomStrength.toFixed(2)));

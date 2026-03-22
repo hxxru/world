@@ -9,6 +9,7 @@ const DEFAULT_PREFERENCES = Object.freeze({
   constellationsVisible: false,
   polarisVisible: false,
   hasSeenHelp: false,
+  skyCultureId: 'korean',
   desktopLookSensitivity: tuning.player.desktopLookSensitivity,
   touchLookSensitivity: tuning.player.touchLookSensitivity,
   bloomStrength: tuning.bloom.strength,

@@ -6,8 +6,6 @@ const BUTTONS = [
   { label: '>>', unit: 'month', direction: 1, title: 'Forward 1 month' },
   { label: '>>>', unit: 'year', direction: 1, title: 'Forward 1 year' },
 ];
-const SPEED_VALUES = [1, 60, 360, 3600];
-
 function styleButton(button) {
   button.style.minWidth = '28px';
   button.style.height = '24px';
@@ -31,7 +29,7 @@ function styleButton(button) {
   });
 }
 
-export function createTimeControls({ onJump, onTogglePause, onSpeedChange } = {}) {
+export function createTimeControls({ onJump, onTogglePause } = {}) {
   const root = document.createElement('div');
   root.style.position = 'fixed';
   root.style.right = '16px';
@@ -85,24 +83,9 @@ export function createTimeControls({ onJump, onTogglePause, onSpeedChange } = {}
     strip.appendChild(button);
   }
 
-  const speedSlider = document.createElement('input');
-  speedSlider.type = 'range';
-  speedSlider.min = '0';
-  speedSlider.max = String(SPEED_VALUES.length - 1);
-  speedSlider.step = '1';
-  speedSlider.value = '0';
-  speedSlider.style.width = '100%';
-  speedSlider.style.margin = '0';
-  speedSlider.style.accentColor = '#d4a857';
-  speedSlider.title = 'Time speed';
-  speedSlider.addEventListener('input', () => {
-    onSpeedChange?.(SPEED_VALUES[Number(speedSlider.value)]);
-  });
-  root.appendChild(speedSlider);
-
   document.body.appendChild(root);
 
-  return { root, strip, pauseButton, speedSlider, profile: 'desktop' };
+  return { root, strip, pauseButton, profile: 'desktop' };
 }
 
 export function updateTimeControls(controls, state = {}) {
@@ -114,24 +97,6 @@ export function updateTimeControls(controls, state = {}) {
   controls.pauseButton.textContent = paused ? '▶' : '⏸';
   controls.pauseButton.title = paused ? 'Play' : 'Pause';
   controls.pauseButton.setAttribute('aria-label', paused ? 'Play' : 'Pause');
-
-  if (controls.speedSlider) {
-    const magnitude = Math.abs(state.speedMultiplier ?? SPEED_VALUES[0]);
-    let nearestIndex = 0;
-    let nearestDistance = Infinity;
-
-    for (let index = 0; index < SPEED_VALUES.length; index += 1) {
-      const distance = Math.abs(SPEED_VALUES[index] - magnitude);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = index;
-      }
-    }
-
-    controls.speedSlider.value = String(nearestIndex);
-    controls.speedSlider.title = `Time speed ${magnitude}x`;
-  }
 }
 
 export function setTimeControlsProfile(controls, profile = 'desktop') {
@@ -147,9 +112,5 @@ export function setTimeControlsProfile(controls, profile = 'desktop') {
     button.style.minWidth = isTouch ? '36px' : '28px';
     button.style.height = isTouch ? '34px' : '24px';
     button.style.fontSize = isTouch ? '12px' : '10px';
-  }
-
-  if (controls.speedSlider) {
-    controls.speedSlider.style.height = isTouch ? '28px' : '';
   }
 }

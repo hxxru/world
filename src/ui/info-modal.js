@@ -48,15 +48,17 @@ export function createInfoModal() {
   ]);
 
   createSection(modal.body, 'Time Controls', [
-    'Use the bottom-right strip to pause, change speed, and jump by week, month, or year.',
+    'Use the bottom-right strip to play/pause and jump by week, month, or year.',
+    'Use 1, 2, 3, and 4 for 1x, 60x, 360x, and 3600x.',
     'Press - to reverse time direction while keeping the current speed.',
   ]);
 
   createSection(modal.body, 'Location And Sky', [
-    'Use the pin button at bottom-left to enter latitude, longitude, and date.',
+    'Open Settings to change latitude, longitude, date, and sky culture.',
     'Press C to toggle constellation lines.',
-    'Press H or 9 to toggle the HUD.',
-    'Press P to toggle the Polaris marker.',
+    'Press H to toggle the HUD.',
+    'Press M to toggle the Polaris marker.',
+    'Press P to play or pause time.',
     'Press O to cycle spawn-mode override for testing.',
   ]);
 

@@ -58,7 +58,6 @@ import { setTuningValue, tuning } from './config/runtime-config.js';
 import { createCompass, updateCompass } from './ui/compass.js';
 import { createHud, setHudVisible, toggleHud, updateHud } from './ui/hud.js';
 import { createInfoModal } from './ui/info-modal.js';
-import { createInputPanel, updateInputPanel } from './ui/input-panel.js';
 import { createLabels, updateLabels } from './ui/labels.js';
 import { createSettingsModal } from './ui/settings-modal.js';
 import { createTimeControls, setTimeControlsProfile, updateTimeControls } from './ui/time-controls.js';
@@ -89,6 +88,7 @@ import { createWater, updateWater } from './world/water.js';
 const INITIAL_OBSERVER_LATITUDE = 45;
 const INITIAL_OBSERVER_LONGITUDE = 0;
 const J2000_JD = 2451545.0;
+const INITIAL_CLOCK_JD = 2451545.18785;
 const ENABLE_BLOOM = true;
 const LAND_WATER_OPTIONS = {
   size: 5200,
@@ -104,6 +104,12 @@ const OCEAN_WATER_OPTIONS = {
 };
 const SPAWN_OVERRIDE_SEQUENCE = [null, 'ocean', 'land'];
 const INPUT_PROFILE_QUERY = window.matchMedia('(pointer: coarse)');
+const SPEED_PRESETS = {
+  Digit1: 1,
+  Digit2: 60,
+  Digit3: 360,
+  Digit4: 3600,
+};
 
 let preferences = getPreferences();
 setTuningValue('player.desktopLookSensitivity', preferences.desktopLookSensitivity);
@@ -159,7 +165,6 @@ let polarisMarker = null;
 let clock = null;
 let hud = null;
 let compass = null;
-let inputPanel = null;
 let labels = null;
 let timeControls = null;
 let player = null;
@@ -172,7 +177,7 @@ let lastFrameTime = null;
 let fps = 0;
 let spawnState = null;
 let spawnModeOverride = null;
-let currentSkyCulture = SKY_CULTURES[0];
+let currentSkyCulture = SKY_CULTURES.find((culture) => culture.id === preferences.skyCultureId) ?? SKY_CULTURES[0];
 let inputProfile = detectInputProfile();
 let observerLatitude = INITIAL_OBSERVER_LATITUDE;
 let observerLongitude = INITIAL_OBSERVER_LONGITUDE;
@@ -265,8 +270,15 @@ function isModalOpen() {
 }
 
 function refreshSettingsModal() {
+  const gregorian = clock ? getClockGregorian(clock) : { year: 2000, month: 1, day: 1, hour: 12 };
   settingsModal?.refresh({
     inputProfile,
+    latitude: observerLatitude,
+    longitude: observerLongitude,
+    gregorian,
+    skyCultureId: currentSkyCulture.id,
+    skyCultureLabel: currentSkyCulture.label,
+    speedMultiplier: clock ? getClockSpeed(clock) : 60,
     ...preferences,
   });
 }
@@ -329,6 +341,29 @@ function applySceneTuningPreference(path, preferenceKey, value) {
   setTuningValue(path, value);
   preferences = updatePreferences({ [preferenceKey]: value });
   refreshSettingsModal();
+}
+
+function setClockPresetSpeed(speed) {
+  if (!clock) {
+    return;
+  }
+
+  const sign = Math.sign(getClockSpeed(clock)) || 1;
+  setClockSpeed(clock, sign * speed);
+  refreshSettingsModal();
+}
+
+async function applySkyCulturePreference(skyCultureId, { persist = true } = {}) {
+  const skyCulture = await loadSkyCultureData(skyCultureId);
+  currentSkyCulture = skyCulture;
+  rebuildConstellationOverlay(skyCulture.constellations);
+
+  if (persist) {
+    preferences = updatePreferences({ skyCultureId });
+  }
+
+  refreshSettingsModal();
+  syncSceneState((lastFrameTime ?? 0) * 0.001);
 }
 
 function setInputProfile(nextProfile) {
@@ -690,16 +725,6 @@ function syncSceneState(timeSeconds = 0) {
     });
   }
 
-  if (inputPanel && clock) {
-    updateInputPanel(inputPanel, {
-      latitude: observerLatitude,
-      longitude: observerLongitude,
-      gregorian: getClockGregorian(clock),
-      skyCultureId: currentSkyCulture.id,
-      skyCultureLabel: currentSkyCulture.label,
-    });
-  }
-
   updateCompass(player?.yaw ?? camera.rotation.y);
 
   if (labels && starField) {
@@ -771,10 +796,24 @@ async function init() {
   compass = createCompass();
   labels = createLabels({ starField, planets, sunMoon });
   labels.hoverEnabled = inputProfile === 'desktop';
-  clock = createClock(J2000_JD);
-  inputPanel = createInputPanel({
+  clock = createClock(INITIAL_CLOCK_JD);
+  setClockSpeed(clock, 60);
+  timeControls = createTimeControls({
+    onJump: jumpClock,
+    onTogglePause: () => {
+      if (!clock) {
+        return;
+      }
+
+      setClockPaused(clock, !isClockPaused(clock));
+      refreshSettingsModal();
+    },
+  });
+  setTimeControlsProfile(timeControls, inputProfile);
+
+  settingsModal = createSettingsModal({
     skyCultures: SKY_CULTURES,
-    onSubmit: ({ latitude, longitude, date, close }) => {
+    onApplyObserverSettings: async ({ latitude, longitude, date, skyCultureId }) => {
       try {
         const parsedLatitude = Number.parseFloat(latitude);
         const parsedLongitude = Number.parseFloat(longitude);
@@ -788,48 +827,19 @@ async function init() {
         }
 
         const parsedDate = parseDateInput(date);
+        if (skyCultureId !== currentSkyCulture.id) {
+          await applySkyCulturePreference(skyCultureId);
+        }
         applyObserverSettings({
           latitude: parsedLatitude,
           longitude: parsedLongitude,
           jd: julianDate(parsedDate.year, parsedDate.month, parsedDate.day, 0),
         });
-        close?.();
+        refreshSettingsModal();
       } catch (error) {
         console.error(error);
       }
     },
-    onSkyCultureChange: async (skyCultureId) => {
-      try {
-        const skyCulture = await loadSkyCultureData(skyCultureId);
-        currentSkyCulture = skyCulture;
-        rebuildConstellationOverlay(skyCulture.constellations);
-        syncSceneState((lastFrameTime ?? 0) * 0.001);
-      } catch (error) {
-        console.error(error);
-      }
-    },
-  });
-  timeControls = createTimeControls({
-    onJump: jumpClock,
-    onTogglePause: () => {
-      if (!clock) {
-        return;
-      }
-
-      setClockPaused(clock, !isClockPaused(clock));
-    },
-    onSpeedChange: (speed) => {
-      if (!clock) {
-        return;
-      }
-
-      const sign = Math.sign(getClockSpeed(clock)) || 1;
-      setClockSpeed(clock, sign * speed);
-    },
-  });
-  setTimeControlsProfile(timeControls, inputProfile);
-
-  settingsModal = createSettingsModal({
     onToggleHud: () => {
       applyHudPreference(!hud.visible);
     },
@@ -841,6 +851,19 @@ async function init() {
     },
     onOpenInfo: () => {
       openInfo();
+    },
+    onTimeSpeedChange: (value) => {
+      if (value === 'toggle-pause') {
+        if (!clock) {
+          return;
+        }
+
+        setClockPaused(clock, !isClockPaused(clock));
+        refreshSettingsModal();
+        return;
+      }
+
+      setClockPresetSpeed(value);
     },
     onDesktopLookSensitivityChange: (value) => {
       applySensitivityPreference('player.desktopLookSensitivity', 'desktopLookSensitivity', value);
@@ -928,10 +951,11 @@ window.addEventListener('keydown', (event) => {
     }
 
     setClockSpeed(clock, -getClockSpeed(clock));
+    refreshSettingsModal();
     return;
   }
 
-  if ((event.code === 'KeyH' || event.code === 'Digit9') && hud) {
+  if (event.code === 'KeyH' && hud) {
     const visible = toggleHud(hud);
     preferences = updatePreferences({ hudVisible: visible });
     refreshSettingsModal();
@@ -952,10 +976,25 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (event.code === 'KeyP') {
+    if (!clock) {
+      return;
+    }
+
+    setClockPaused(clock, !isClockPaused(clock));
+    refreshSettingsModal();
+    return;
+  }
+
+  if (event.code === 'KeyM') {
     const visible = togglePolarisMarker(polarisMarker);
     preferences = updatePreferences({ polarisVisible: visible });
     refreshSettingsModal();
     console.info(`Polaris marker ${visible ? 'shown' : 'hidden'}.`);
+    return;
+  }
+
+  if (SPEED_PRESETS[event.code]) {
+    setClockPresetSpeed(SPEED_PRESETS[event.code]);
     return;
   }
 
