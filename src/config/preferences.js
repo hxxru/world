@@ -6,7 +6,7 @@ const VERSION = 1;
 const DEFAULT_PREFERENCES = Object.freeze({
   version: VERSION,
   hudVisible: false,
-  constellationsVisible: false,
+  constellationsVisible: true,
   polarisVisible: false,
   hasSeenHelp: false,
   skyCultureId: 'korean',

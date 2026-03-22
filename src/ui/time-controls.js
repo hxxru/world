@@ -103,8 +103,9 @@ export function setTimeControlsProfile(controls, profile = 'desktop') {
   controls.profile = profile;
   const isTouch = profile === 'touch';
 
-  controls.root.style.left = isTouch ? '16px' : '';
+  controls.root.style.left = '';
   controls.root.style.right = '16px';
+  controls.root.style.alignItems = 'flex-end';
   controls.strip.style.padding = isTouch ? '10px' : '6px';
   controls.strip.style.gap = isTouch ? '6px' : '4px';
 

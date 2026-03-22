@@ -278,7 +278,7 @@ function refreshSettingsModal() {
     gregorian,
     skyCultureId: currentSkyCulture.id,
     skyCultureLabel: currentSkyCulture.label,
-    speedMultiplier: clock ? getClockSpeed(clock) : 60,
+    speedMultiplier: clock ? getClockSpeed(clock) : 360,
     ...preferences,
   });
 }
@@ -797,7 +797,7 @@ async function init() {
   labels = createLabels({ starField, planets, sunMoon });
   labels.hoverEnabled = inputProfile === 'desktop';
   clock = createClock(INITIAL_CLOCK_JD);
-  setClockSpeed(clock, 60);
+  setClockSpeed(clock, 360);
   timeControls = createTimeControls({
     onJump: jumpClock,
     onTogglePause: () => {
@@ -813,7 +813,7 @@ async function init() {
 
   settingsModal = createSettingsModal({
     skyCultures: SKY_CULTURES,
-    onApplyObserverSettings: async ({ latitude, longitude, date, skyCultureId }) => {
+    onApplyObserverSettings: async ({ latitude, longitude, date }) => {
       try {
         const parsedLatitude = Number.parseFloat(latitude);
         const parsedLongitude = Number.parseFloat(longitude);
@@ -827,15 +827,23 @@ async function init() {
         }
 
         const parsedDate = parseDateInput(date);
-        if (skyCultureId !== currentSkyCulture.id) {
-          await applySkyCulturePreference(skyCultureId);
-        }
         applyObserverSettings({
           latitude: parsedLatitude,
           longitude: parsedLongitude,
           jd: julianDate(parsedDate.year, parsedDate.month, parsedDate.day, 0),
         });
         refreshSettingsModal();
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    onSkyCultureChange: async (skyCultureId) => {
+      if (skyCultureId === currentSkyCulture.id) {
+        return;
+      }
+
+      try {
+        await applySkyCulturePreference(skyCultureId);
       } catch (error) {
         console.error(error);
       }

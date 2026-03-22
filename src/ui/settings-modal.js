@@ -263,6 +263,7 @@ function createRangeRow(root, { label, description, min, max, step, suffix = '',
 export function createSettingsModal({
   skyCultures = [],
   onApplyObserverSettings,
+  onSkyCultureChange,
   onToggleHud,
   onToggleConstellations,
   onTogglePolaris,
@@ -283,7 +284,7 @@ export function createSettingsModal({
   intro.textContent = 'Persistent display and control settings. Keyboard shortcuts still work on desktop.';
   body.appendChild(intro);
 
-  const observerSection = createSection(body, 'Observer', 'Current viewpoint, date, and sky culture.');
+  const observerSection = createSection(body, 'Observer', 'Current viewpoint and date.');
   const observerCurrent = document.createElement('div');
   observerCurrent.style.marginBottom = '10px';
   observerCurrent.style.fontSize = '10px';
@@ -315,19 +316,6 @@ export function createSettingsModal({
   styleField(date);
   createLabeledField(observerForm, 'Date', date);
 
-  const skyCulture = document.createElement('select');
-  styleField(skyCulture);
-  skyCulture.style.cursor = 'pointer';
-  for (const culture of skyCultures) {
-    const option = document.createElement('option');
-    option.value = culture.id;
-    option.textContent = culture.label;
-    option.style.background = '#0b111a';
-    option.style.color = '#f5e6c8';
-    skyCulture.appendChild(option);
-  }
-  createLabeledField(observerForm, 'Sky Culture', skyCulture);
-
   const observerSubmit = document.createElement('button');
   observerSubmit.type = 'submit';
   observerSubmit.textContent = 'Apply observer';
@@ -348,8 +336,24 @@ export function createSettingsModal({
       latitude: latitude.value.trim(),
       longitude: longitude.value.trim(),
       date: date.value.trim(),
-      skyCultureId: skyCulture.value,
     });
+  });
+
+  const skySection = createSection(body, 'Sky Culture', 'Applies immediately and persists between visits.');
+  const skyCulture = document.createElement('select');
+  styleField(skyCulture);
+  skyCulture.style.cursor = 'pointer';
+  for (const culture of skyCultures) {
+    const option = document.createElement('option');
+    option.value = culture.id;
+    option.textContent = culture.label;
+    option.style.background = '#0b111a';
+    option.style.color = '#f5e6c8';
+    skyCulture.appendChild(option);
+  }
+  createLabeledField(skySection, 'Culture', skyCulture);
+  skyCulture.addEventListener('change', () => {
+    onSkyCultureChange?.(skyCulture.value);
   });
 
   const displaySection = createSection(body, 'Display');

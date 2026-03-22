@@ -46,6 +46,39 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
   root.style.pointerEvents = 'none';
   root.style.zIndex = '12';
 
+  const crosshair = document.createElement('div');
+  crosshair.style.position = 'fixed';
+  crosshair.style.left = '50%';
+  crosshair.style.top = '50%';
+  crosshair.style.width = '18px';
+  crosshair.style.height = '18px';
+  crosshair.style.transform = 'translate(-50%, -50%)';
+  crosshair.style.display = hoverEnabled ? 'none' : 'block';
+  crosshair.style.opacity = '0.78';
+  root.appendChild(crosshair);
+
+  const crosshairHorizontal = document.createElement('div');
+  crosshairHorizontal.style.position = 'absolute';
+  crosshairHorizontal.style.left = '50%';
+  crosshairHorizontal.style.top = '50%';
+  crosshairHorizontal.style.width = '18px';
+  crosshairHorizontal.style.height = '1px';
+  crosshairHorizontal.style.transform = 'translate(-50%, -50%)';
+  crosshairHorizontal.style.background = 'rgba(245, 230, 200, 0.72)';
+  crosshairHorizontal.style.boxShadow = '0 0 8px rgba(0, 0, 0, 0.55)';
+  crosshair.appendChild(crosshairHorizontal);
+
+  const crosshairVertical = document.createElement('div');
+  crosshairVertical.style.position = 'absolute';
+  crosshairVertical.style.left = '50%';
+  crosshairVertical.style.top = '50%';
+  crosshairVertical.style.width = '1px';
+  crosshairVertical.style.height = '18px';
+  crosshairVertical.style.transform = 'translate(-50%, -50%)';
+  crosshairVertical.style.background = 'rgba(245, 230, 200, 0.72)';
+  crosshairVertical.style.boxShadow = '0 0 8px rgba(0, 0, 0, 0.55)';
+  crosshair.appendChild(crosshairVertical);
+
   const hover = document.createElement('div');
   hover.style.position = 'fixed';
   hover.style.display = 'none';
@@ -130,6 +163,7 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
 
   return {
     root,
+    crosshair,
     hover,
     hoverEnabled,
     mouse,
@@ -149,12 +183,12 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
 
 export function updateLabels(labels, { starField, camera, sunAltitude = -90, constellationLines = null }) {
   if (!labels.hoverEnabled) {
-    for (const label of labels.permanentLabels) {
-      label.style.visibility = '';
-    }
-    setHighlightedConstellation(constellationLines, null);
-    labels.hover.style.display = 'none';
-    return;
+    labels.crosshair.style.display = 'block';
+    labels.mouse.x = window.innerWidth * 0.5;
+    labels.mouse.y = window.innerHeight * 0.5;
+    labels.mouse.active = true;
+  } else {
+    labels.crosshair.style.display = 'none';
   }
 
   if (!labels.mouse.active) {
