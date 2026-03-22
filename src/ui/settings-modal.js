@@ -278,12 +278,6 @@ export function createSettingsModal({
   const modal = createModal({ title: 'Settings' });
   const { body } = modal;
 
-  const intro = document.createElement('p');
-  intro.style.margin = '0 0 16px';
-  intro.style.color = 'rgba(245, 230, 200, 0.78)';
-  intro.textContent = 'Persistent display and control settings. Keyboard shortcuts still work on desktop.';
-  body.appendChild(intro);
-
   const observerSection = createSection(body, 'Observer', 'Current viewpoint and date.');
   const observerCurrent = document.createElement('div');
   observerCurrent.style.marginBottom = '10px';
@@ -461,7 +455,7 @@ export function createSettingsModal({
     refresh(state) {
       const dateValue = formatDateForInput(state.gregorian);
       observerCurrent.textContent =
-        `current:\nlat ${formatDegrees(state.latitude)}\nlon ${formatDegrees(state.longitude)}\ndate ${dateValue}\nculture ${state.skyCultureLabel}`;
+        `current:\nlat ${formatDegrees(state.latitude)}\nlon ${formatDegrees(state.longitude)}\ndate ${dateValue}`;
       setFieldValueIfIdle(latitude, state.latitude.toFixed(4));
       setFieldValueIfIdle(longitude, state.longitude.toFixed(4));
       setFieldValueIfIdle(date, dateValue);

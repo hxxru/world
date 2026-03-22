@@ -56,6 +56,7 @@ import {
 import { getPreferences, updatePreferences } from './config/preferences.js';
 import { setTuningValue, tuning } from './config/runtime-config.js';
 import { createCompass, updateCompass } from './ui/compass.js';
+import { getCelestialSymbol } from './ui/celestial-symbols.js';
 import { createHud, setHudVisible, toggleHud, updateHud } from './ui/hud.js';
 import { createInfoModal } from './ui/info-modal.js';
 import { createLabels, updateLabels } from './ui/labels.js';
@@ -1097,9 +1098,7 @@ function formatPlanetHudLines() {
 
   return getPlanetDebugData(planets).map(
     (planet) =>
-      `${planet.name.padEnd(7, ' ')} ra ${planet.ra.toFixed(2)}\u00b0  dec ${planet.dec.toFixed(
-        2
-      )}\u00b0  alt ${planet.alt.toFixed(2)}\u00b0  az ${planet.az.toFixed(2)}\u00b0`
+      `${getCelestialSymbol(planet.name)}  alt ${planet.alt.toFixed(2)}\u00b0  az ${planet.az.toFixed(2)}\u00b0`
   );
 }
 
@@ -1114,17 +1113,13 @@ function formatSunMoonHudLines() {
 
   if (sunMoon.sunData) {
     lines.push(
-      `sun     ra ${sunMoon.sunData.ra.toFixed(2)}\u00b0  dec ${sunMoon.sunData.dec.toFixed(
-        2
-      )}\u00b0  alt ${sunAlt.toFixed(2)}\u00b0  az ${sunMoon.sunData.az.toFixed(2)}\u00b0`
+      `${getCelestialSymbol('Sun')}  alt ${sunAlt.toFixed(2)}\u00b0  az ${sunMoon.sunData.az.toFixed(2)}\u00b0`
     );
   }
 
   if (sunMoon.moonData && moonPhase) {
     lines.push(
-      `moon    ra ${sunMoon.moonData.ra.toFixed(2)}\u00b0  dec ${sunMoon.moonData.dec.toFixed(
-        2
-      )}\u00b0  alt ${sunMoon.moonData.alt.toFixed(2)}\u00b0  az ${sunMoon.moonData.az.toFixed(
+      `${getCelestialSymbol('Moon')}  alt ${sunMoon.moonData.alt.toFixed(2)}\u00b0  az ${sunMoon.moonData.az.toFixed(
         2
       )}\u00b0  lit ${(moonPhase.illuminatedFraction * 100).toFixed(1)}%`
     );

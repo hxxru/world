@@ -67,17 +67,12 @@ export function updateHud(hud, state) {
   const sunMoonSection = Array.isArray(state.sunMoonLines) && state.sunMoonLines.length > 0
     ? `\n${state.sunMoonLines.join('\n')}`
     : '';
-  const spawnSection = state.spawnModeLabel ? `\nspawn ${state.spawnModeLabel}` : '';
 
   hud.content.textContent =
-    `jd   ${state.jd.toFixed(5)}\n` +
     `utc  ${formatGregorianDateTime(state.gregorian)}\n` +
-    `gmst ${state.gmst.toFixed(3)}\u00b0\n` +
-    `lst  ${state.lst.toFixed(3)}\u00b0\n` +
     `obs  lat ${formatDegrees(state.latitude)}  lon ${formatDegrees(state.longitude)}\n` +
     `spd  ${state.paused ? 'paused' : `${state.speedMultiplier.toFixed(0)}x`}\n` +
     `fps  ${state.fps.toFixed(1)}` +
-    spawnSection +
     planetSection +
     sunMoonSection;
 }

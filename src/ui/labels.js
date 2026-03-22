@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { computeAttenuation } from '../sky/attenuation.js';
 import { setHighlightedConstellation } from '../sky/constellations.js';
 import { tuning } from '../config/runtime-config.js';
+import { appendCelestialSymbol } from './celestial-symbols.js';
 
 const NAMED_STAR_MAGNITUDE_LIMIT = 3;
 const SCREEN_MARGIN = 24;
@@ -131,7 +132,7 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
 
   for (const body of planets?.bodies ?? []) {
     bodyTargets.push({
-      name: body.name,
+      name: appendCelestialSymbol(body.name),
       magnitude: null,
       getPosition: () => body.sprite.position,
       getAltitude: () => body.data?.alt ?? -90,
@@ -143,7 +144,7 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
 
   if (sunMoon) {
     bodyTargets.push({
-      name: 'Sun',
+      name: appendCelestialSymbol('Sun'),
       magnitude: null,
       getPosition: () => sunMoon.sun.position,
       getAltitude: () => sunMoon.sunData?.alt ?? -90,
@@ -151,7 +152,7 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
       permanentLabel: sunMoon.sunLabel,
     });
     bodyTargets.push({
-      name: 'Moon',
+      name: appendCelestialSymbol('Moon'),
       magnitude: null,
       getPosition: () => sunMoon.moon.position,
       getAltitude: () => sunMoon.moonData?.alt ?? -90,

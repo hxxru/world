@@ -4,6 +4,7 @@ import * as Astronomy from 'astronomy-engine';
 import { computeAttenuation } from './attenuation.js';
 import { equatorialToHorizontal, horizontalToCartesian } from './coordinates.js';
 import { tuning } from '../config/runtime-config.js';
+import { appendCelestialSymbol } from '../ui/celestial-symbols.js';
 
 const PLANET_RADIUS = 1000;
 const J2000_JD = 2451545.0;
@@ -106,7 +107,7 @@ export function createPlanets(scene) {
       sprite,
       baseColor: new THREE.Color(config.color),
       tintColor: new THREE.Color(1, 1, 1),
-      label: createLabel(labelRoot, config.name),
+      label: createLabel(labelRoot, appendCelestialSymbol(config.name)),
       data: null,
     };
   });

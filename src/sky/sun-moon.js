@@ -4,6 +4,7 @@ import * as Astronomy from 'astronomy-engine';
 import { computeAttenuation } from './attenuation.js';
 import { equatorialToHorizontal, horizontalToCartesian } from './coordinates.js';
 import { tuning } from '../config/runtime-config.js';
+import { appendCelestialSymbol } from '../ui/celestial-symbols.js';
 
 const J2000_JD = 2451545.0;
 const SKY_RADIUS = 1000;
@@ -195,8 +196,8 @@ export function createSunMoon(scene) {
     tintColor: new THREE.Color(1, 1, 1),
     baseMoonColor: new THREE.Color(),
     baseHaloColor: new THREE.Color(),
-    sunLabel: createLabel(labelRoot, 'Sun'),
-    moonLabel: createLabel(labelRoot, 'Moon'),
+    sunLabel: createLabel(labelRoot, appendCelestialSymbol('Sun')),
+    moonLabel: createLabel(labelRoot, appendCelestialSymbol('Moon')),
     observer: new Astronomy.Observer(0, 0, 0),
     observerPosition: new THREE.Vector3(),
     sunData: null,
