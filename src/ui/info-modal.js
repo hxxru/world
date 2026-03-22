@@ -58,7 +58,9 @@ export function createInfoModal() {
     'Press C to toggle constellation lines.',
     'Press H to toggle the HUD.',
     'Press M to toggle the Polaris marker.',
+    'Press N to toggle the meteor-radiant marker.',
     'Press P to play or pause time.',
+    'Meteor showers appear automatically on dark nights and can be tuned in Settings.',
     'Press O to cycle spawn-mode override for testing.',
   ]);
 

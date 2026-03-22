@@ -67,6 +67,9 @@ export function updateHud(hud, state) {
   const sunMoonSection = Array.isArray(state.sunMoonLines) && state.sunMoonLines.length > 0
     ? `\n${state.sunMoonLines.join('\n')}`
     : '';
+  const meteorSection = Array.isArray(state.meteorLines) && state.meteorLines.length > 0
+    ? `\n${state.meteorLines.join('\n')}`
+    : '';
 
   hud.content.textContent =
     `utc  ${formatGregorianDateTime(state.gregorian)}\n` +
@@ -74,7 +77,8 @@ export function updateHud(hud, state) {
     `spd  ${state.paused ? 'paused' : `${state.speedMultiplier.toFixed(0)}x`}\n` +
     `fps  ${state.fps.toFixed(1)}` +
     planetSection +
-    sunMoonSection;
+    sunMoonSection +
+    meteorSection;
 }
 
 export function setHudVisible(hud, visible) {

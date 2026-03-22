@@ -18,11 +18,15 @@ no achievements, no progression, no historical events, no multiplayer, no audio.
 implemented now:
 - brightest ~2000 HYG stars with color, magnitude scaling, bloom, sidereal rotation, and precession
 - processed Stellarium constellation lines with missing-HIP handling
-- live JD-based clock with pause, reverse, speed presets, and HUD
+- live JD-based clock with pause, reverse, speed presets, and a compact HUD
 - planets, sun, and moon via `astronomy-engine`
+- procedural annual meteor showers + sporadic meteors, keyed to solar longitude
 - atmosphere/day-night gradient, star fading, terrain lighting hook
 - procedural terrain and sparse instanced pine trees with a reduced guaranteed clearing
-- temporary drag-look inspection camera (not final first-person controls)
+- first-person camera with desktop and mobile control profiles
+- settings / info modal system with persisted preferences
+- mobile crosshair-based sky labels and touch movement/look/jump controls
+- persisted meteor controls for visibility, rate, brightness, and limiting magnitude
 
 still missing for MVP:
 - performance check on mid-range hardware
@@ -87,34 +91,38 @@ what shipped by the end of the MVP:
 
 ### input, controls, and UI
 
-- HUD showing date, time, location, sidereal data, FPS, spawn mode, and body debug info
+- compact HUD showing UTC, observer coordinates, speed, FPS, and planet/sun/moon alt-az data
 - bottom-right time controls for:
   - play / pause
   - fixed jumps by week, month, and year
-  - continuous speed adjustment by slider
-- bottom-left location/date panel with:
+- settings modal with:
   - latitude input
   - longitude input
   - gregorian / astronomical-year date input
-  - skyculture selector
-  - instant teleport + world rebuild on submit
+  - sky culture selector
+  - speed presets (`1x`, `60x`, `360x`, `3600x`)
+  - persisted display / sensitivity / visual-tuning preferences
+- info / how-to-play modal with desktop and mobile control reference
 - top-center compass strip with cardinal directions and live heading readout
-- debug tuning panel with live sliders for stars, bloom, planets, sun/moon, atmosphere, Milky Way, fog, trees, water, player movement, labels, and sky attenuation
-- keyboard toggles for HUD, debug panel, constellation lines, polaris marker, and spawn-mode override
+- always-visible settings and info buttons
+- keyboard toggles for HUD, constellation lines, play/pause, polaris marker, spawn-mode override, and speed presets
+- touch controls with:
+  - left movement zone
+  - right look zone
+  - jump button
+  - centered crosshair for sky labels
 
 ### rendering and interaction details
 
 - post-processing bloom integrated with the night-sky rendering
-- permanent labels for planets, sun, and moon
+- permanent labels for planets, sun, and moon, with astronomical symbols appended
 - hover labels filtered so hidden/daytime stars do not produce false name popups
+- touch labels use the center crosshair instead of pointer hover
 - constellation hover labels when constellation lines are enabled, including highlighted hovered figures
 - live skyculture switching for constellation overlays, including native-name-over-English hover labels for non-western cultures
-- star-count feedback tied to the limiting-magnitude slider
+- meteor streaks driven by hardcoded shower tables, radiant altitude, and a small active-object pool
 - ocean water with moon reflection and darker nighttime ocean treatment
 - world rebuild flow that updates terrain seed, spawn mode, observer location, and celestial state together when place/date changes
-
-future TODO:
-- if a dedicated settings panel is added later, consider moving the skyculture selector out of the location/date panel and into settings
 
 ### development and data pipeline delivered as part of MVP
 
@@ -237,11 +245,12 @@ each milestone is independently testable. verify before moving to the next.
 - **done when:** you can walk around the terrain in first person, look up at the sky, walk over hills.
 
 ### milestone 15: location/date input UI
-- [x] implement `src/ui/input-panel.js`: text fields for latitude, longitude, date (gregorian)
-- [x] "go" button teleports: regenerates terrain seed from coordinates, updates sky
-- [x] display current date/time/location on HUD
-- [x] time control buttons: play, pause, 1×/60×/360×/3600× speed
-- **done when:** you can type coordinates and a date, press go, and the sky + terrain update. time controls work.
+- [x] implement observer controls for latitude, longitude, and date
+- [x] move observer and sky-culture controls into settings
+- [x] make sky-culture changes live and persistent
+- [x] expose speed presets in settings and on numeric hotkeys
+- [x] display current date/time/location in the compact HUD
+- **done when:** you can update observer settings from the settings modal and the sky + world refresh correctly.
 
 ### milestone 16: star/planet labels
 - [x] hover or click on a star/planet to see its name
@@ -254,6 +263,8 @@ each milestone is independently testable. verify before moving to the next.
 - [x] tune terrain amplitude, tree density, water reflectivity
 - [x] tune fog distance, horizon haze
 - [x] add milky way as a static textured band (equirectangular image mapped to the celestial sphere)
+- [x] add mobile support with touch controls and center-crosshair sky labels
+- [x] replace the old debug surface with settings + info modals
 - [ ] performance check: confirm 60fps on mid-range hardware with all systems active
 - **done when:** the game looks and feels good. screenshot-worthy night sky over pine-dotted hills.
 

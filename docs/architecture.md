@@ -4,6 +4,11 @@
 
 ```
 witness/
+├── docs/
+│   ├── aesthetics.md
+│   ├── architecture.md
+│   ├── astronomy.md
+│   └── devlog.md
 ├── public/
 │   ├── data/
 │   │   ├── bsc5.json              # star catalog (top ~2000 by vmag)
@@ -15,11 +20,15 @@ witness/
 ├── scripts/
 │   └── preprocess-constellations.mjs  # flatten Stellarium polylines into segments
 ├── src/
+│   ├── config/
+│   │   ├── preferences.js         # persisted user settings / defaults
+│   │   └── runtime-config.js      # shared tuning values used by runtime systems
 │   ├── main.js                    # entry: init scene, game loop, orchestration
 │   ├── sky/
 │   │   ├── coordinates.js         # all astronomical coordinate math
 │   │   ├── stars.js               # star field rendering (instanced mesh)
 │   │   ├── constellations.js      # constellation line rendering
+│   │   ├── meteors.js             # procedural meteor showers + sporadics
 │   │   ├── planets.js             # astronomy-engine planet positions + rendering
 │   │   ├── sun-moon.js            # astronomy-engine sun/moon positions + rendering
 │   │   ├── atmosphere.js          # sky gradient shader
@@ -30,15 +39,20 @@ witness/
 │   │   ├── trees.js               # instanced pine trees
 │   │   └── land-mask.js           # land/ocean lookup from texture
 │   ├── player/
-│   │   ├── camera.js              # first-person controls (pointer lock + WASD)
+│   │   ├── camera.js              # profile-aware first-person controls (desktop + touch)
 │   │   └── spawn.js               # spawn logic (land vs boat)
 │   ├── time/
-│   │   └── clock.js               # julian date clock, speed control
+│   │   └── clock.js               # julian date clock, pause / reverse / speed presets
 │   └── ui/
-│       ├── hud.js                 # date/time/location readout, crosshair
-│       ├── input-panel.js         # lat/lon/date entry form
-│       ├── labels.js              # star/planet hover labels (raycasting)
-│       └── time-controls.js       # play/pause/speed buttons
+│       ├── celestial-symbols.js   # symbol mapping for HUD and labels
+│       ├── hud.js                 # compact telemetry readout
+│       ├── info-modal.js          # controls / onboarding modal
+│       ├── labels.js              # desktop hover labels + touch crosshair labels
+│       ├── modal.js               # reusable modal shell
+│       ├── settings-modal.js      # settings surface for observer / display / speed
+│       ├── time-controls.js       # play/pause + date-jump strip
+│       ├── touch-controls.js      # left-move / right-look / jump mobile overlay
+│       └── utility-buttons.js     # visible Settings / Info buttons
 ├── index.html
 ├── package.json
 └── vite.config.js
@@ -49,7 +63,7 @@ witness/
 each module has a single responsibility. modules communicate through well-defined interfaces, not by reaching into each other's internals.
 
 ### `src/sky/coordinates.js`
-**owns:** all astronomical math — coordinate transforms, sidereal time, precession, obliquity.
+**owns:** all astronomical math — coordinate transforms, sidereal time, precession, solar longitude, obliquity.
 **exports:**
 - `julianDate(year, month, day, hour)` → JD (number)
 - `gregorianFromJD(jd)` → `{year, month, day, hour}`
@@ -58,6 +72,7 @@ each module has a single responsibility. modules communicate through well-define
 - `precessRADec(ra, dec, T)` → `{ra, dec}` (precessed to date T centuries from J2000)
 - `equatorialToHorizontal(ra, dec, lst, latitude)` → `{alt, az}` (degrees)
 - `horizontalToCartesian(alt, az, radius)` → `{x, y, z}` (three.js coords)
+- `solarLongitude(jd)` → degrees
 - `obliquityOfEcliptic(T)` → degrees
 - `eclipticToEquatorial(lon, lat, obliquity)` → `{ra, dec}`
 
@@ -90,6 +105,14 @@ when a segment endpoint is missing from the filtered BSC subset, skip that segme
 - `updatePlanetPositions(planets, jd, lst, latitude)` — recompute positions from `astronomy-engine`
 
 **depends on:** `astronomy-engine` for topocentric equatorial coordinates, `coordinates.js` for equatorial→horizontal→cartesian transforms.
+
+### `src/sky/meteors.js`
+**owns:** annual shower tables, solar-longitude keyed activity curves, sporadic meteor spawning, and short-lived meteor rendering on the sky sphere.
+**exports:**
+- `createMeteorShowers(scene)` → meteor system object
+- `updateMeteorShowers(system, state)` — update shower activity, spawn meteors, animate active streaks
+
+**depends on:** `coordinates.js` for solar longitude and coordinate transforms, `attenuation.js` for night-sky visibility weighting, and runtime tuning/preferences for user-facing controls.
 
 ### `src/sky/sun-moon.js`
 **owns:** sun/moon position lookup via `astronomy-engine`, moon phase shading, sun/moon rendering.
@@ -141,9 +164,9 @@ when a segment endpoint is missing from the filtered BSC subset, skip that segme
 - `isLand(landMask, latitude, longitude)` → boolean
 
 ### `src/player/camera.js`
-**owns:** first-person camera controls.
+**owns:** first-person camera controls and normalized movement/look input state for both desktop and touch profiles.
 **exports:**
-- `createPlayerCamera(renderer)` → camera + controls object
+- `createPlayerCamera(camera, domElement)` → player controller state
 - `updatePlayer(player, terrain, deltaTime)` — movement, ground collision
 
 **depends on:** `terrain.js` for `getHeightAt`.
@@ -156,7 +179,7 @@ when a segment endpoint is missing from the filtered BSC subset, skip that segme
 **depends on:** `land-mask.js`, `terrain.js`.
 
 ### `src/time/clock.js`
-**owns:** game time state, speed control, julian date math.
+**owns:** game time state, pause / reverse / speed presets, julian date math.
 **exports:**
 - `createClock(initialJD)` → clock object
 - `tickClock(clock, realDeltaSeconds)` — advance time
@@ -168,10 +191,14 @@ when a segment endpoint is missing from the filtered BSC subset, skip that segme
 
 **depends on:** `coordinates.js` for JD conversion.
 
+### `src/config/preferences.js`
+**owns:** localStorage-backed preferences and startup defaults.
+**current defaults include:** Korean sky culture, constellation lines enabled, HUD hidden, `360x` clock speed, persisted look sensitivities, and meteor visibility/tuning values.
+
 ### `src/ui/*`
-**owns:** all DOM-based UI. HTML overlays, not three.js objects (except labels which may use sprites).
-`labels.js` should use `public/data/star-names.json` for star labels and planet display names from runtime data.
-**exports:** init and update functions for each UI component.
+**owns:** all DOM-based UI. HTML overlays, modal surfaces, touch controls, compact HUD, crosshair labels, and persistent settings controls.
+`settings-modal.js` is now the main surface for observer changes, sky culture selection, and speed presets. `time-controls.js` is only the compact play/pause + date-jump strip. `labels.js` uses hover on desktop and a centered crosshair target on touch devices.
+Meteor visibility and rate/brightness controls also live in Settings; there is no keyboard toggle for meteors.
 
 ## data flow
 
@@ -193,6 +220,9 @@ game loop (main.js):
 │
 ├── planets.update(jd, lst, lat)  [every frame — planets move fast enough]
 │
+├── meteors.update(jd, lst, lat, dt)
+│   └── solar longitude + radiant altitude determine shower activity and spawn rate
+│
 ├── terrain.updateLighting(ambientFromSun)
 │
 ├── water.update(time)
@@ -201,6 +231,13 @@ game loop (main.js):
 │
 └── ui.update(clock, player)
 ```
+
+## interaction notes
+
+- desktop keeps keyboard-first controls: `WASD`, `Space`, right-drag look, `H`, `C`, `P`, `M`, `O`, and speed presets on `1`-`4`
+- touch uses coarse-pointer detection to switch to left-zone movement, right-zone look, a jump button, and center-screen crosshair label targeting
+- the bottom-right time strip now handles play/pause and date jumps only; speed lives in settings and on numeric hotkeys
+- observer location/date and sky culture are configured from settings, not a floating pin panel
 
 ## data formats
 

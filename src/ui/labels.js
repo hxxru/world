@@ -40,7 +40,7 @@ function distanceToSegment(pointX, pointY, startX, startY, endX, endY) {
   return Math.hypot(pointX - nearestX, pointY - nearestY);
 }
 
-export function createLabels({ starField, planets, sunMoon, hoverEnabled = true }) {
+export function createLabels({ starField, planets, sunMoon, meteors = null, hoverEnabled = true }) {
   const root = document.createElement('div');
   root.style.position = 'fixed';
   root.style.inset = '0';
@@ -162,6 +162,18 @@ export function createLabels({ starField, planets, sunMoon, hoverEnabled = true 
     permanentLabels.push(sunMoon.sunLabel, sunMoon.moonLabel);
   }
 
+  if (meteors?.radiantMarker) {
+    bodyTargets.push({
+      getName: () => (meteors.activeShowerName ? `${meteors.activeShowerName} shower` : 'Meteor shower'),
+      magnitude: null,
+      getPosition: () => meteors.radiantMarker.position,
+      getAltitude: () => meteors.radiantAlt ?? -90,
+      getVisible: () => meteors.radiantMarker.visible,
+      profile: 'stars',
+      permanentLabel: null,
+    });
+  }
+
   return {
     root,
     crosshair,
@@ -238,6 +250,10 @@ export function updateLabels(labels, { starField, camera, sunAltitude = -90, con
   }
 
   for (const target of labels.bodyTargets) {
+    if (target.getVisible && !target.getVisible()) {
+      continue;
+    }
+
     if (target.profile !== 'sun') {
       const attenuation = computeAttenuation(target.getAltitude(), sunAltitude, target.profile);
 
@@ -260,7 +276,7 @@ export function updateLabels(labels, { starField, camera, sunAltitude = -90, con
       nearestDistance = distance;
       nearest = {
         kind: 'body',
-        name: target.name,
+        name: target.getName ? target.getName() : target.name,
         magnitude: target.magnitude,
         screen,
         permanentLabel: target.permanentLabel,

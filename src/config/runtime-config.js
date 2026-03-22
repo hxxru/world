@@ -71,6 +71,14 @@ export const tuning = {
   labels: {
     hoverThreshold: 30,
   },
+  meteors: {
+    enabled: true,
+    sporadicRate: 6,
+    showerMultiplier: 1,
+    streakBrightness: 1,
+    minMagnitude: 5.5,
+    maxActive: 20,
+  },
 };
 
 const listeners = new Set();

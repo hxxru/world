@@ -1,7 +1,9 @@
+import * as Astronomy from 'astronomy-engine';
+
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const RADIANS_TO_DEGREES = 180 / Math.PI;
 
-function normalizeDegrees(degrees) {
+export function normalizeDegrees(degrees) {
   return ((degrees % 360) + 360) % 360;
 }
 
@@ -144,6 +146,10 @@ export function horizontalToCartesian(alt, az, radius) {
     z: radius * cosAltitude * Math.sin(azimuth),
     y: radius * Math.sin(altitude),
   };
+}
+
+export function solarLongitude(jd) {
+  return normalizeDegrees(Astronomy.SunPosition(jd - 2451545.0).elon);
 }
 
 export function obliquityOfEcliptic(T) {

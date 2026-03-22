@@ -25,6 +25,13 @@ import {
 import { createPlanets, getPlanetDebugData, updatePlanetPositions } from './sky/planets.js';
 import { createMilkyWay, updateMilkyWay } from './sky/milkyway.js';
 import {
+  createMeteorShowers,
+  getMeteorShowerStats,
+  setMeteorRadiantMarkerVisible,
+  toggleMeteorRadiantMarker,
+  updateMeteorShowers,
+} from './sky/meteors.js';
+import {
   createPolarisMarker,
   createStarField,
   loadStarCatalog,
@@ -118,6 +125,11 @@ setTuningValue('player.touchLookSensitivity', preferences.touchLookSensitivity);
 setTuningValue('bloom.strength', preferences.bloomStrength);
 setTuningValue('stars.limitingMagnitude', preferences.starLimitingMagnitude);
 setTuningValue('constellationLines.opacity', preferences.constellationOpacity);
+setTuningValue('meteors.enabled', preferences.meteorsVisible);
+setTuningValue('meteors.showerMultiplier', preferences.meteorShowerMultiplier);
+setTuningValue('meteors.sporadicRate', preferences.meteorSporadicRate);
+setTuningValue('meteors.streakBrightness', preferences.meteorStreakBrightness);
+setTuningValue('meteors.minMagnitude', preferences.meteorMinMagnitude);
 
 // --- scene setup ---
 const scene = new THREE.Scene();
@@ -154,6 +166,7 @@ let starField = null;
 let constellationLines = null;
 let planets = null;
 let milkyWay = null;
+let meteors = null;
 let sunMoon = null;
 let atmosphere = null;
 let terrain = null;
@@ -326,6 +339,30 @@ function applyPolarisPreference(visible, { persist = true } = {}) {
 
   if (persist) {
     preferences = updatePreferences({ polarisVisible: visible });
+    refreshSettingsModal();
+  }
+
+  return visible;
+}
+
+function applyMeteorPreference(visible, { persist = true } = {}) {
+  setTuningValue('meteors.enabled', visible);
+
+  if (persist) {
+    preferences = updatePreferences({ meteorsVisible: visible });
+    refreshSettingsModal();
+  }
+
+  return visible;
+}
+
+function applyMeteorRadiantPreference(visible, { persist = true } = {}) {
+  if (meteors) {
+    setMeteorRadiantMarkerVisible(meteors, visible);
+  }
+
+  if (persist) {
+    preferences = updatePreferences({ meteorRadiantVisible: visible });
     refreshSettingsModal();
   }
 
@@ -610,7 +647,7 @@ function buildWorldForCurrentSpawn() {
   console.info(`Spawn mode: ${getSpawnModeLabel()}.`);
 }
 
-function syncSceneState(timeSeconds = 0) {
+function syncSceneState(timeSeconds = 0, deltaSeconds = 0) {
   updateObserverWorldPosition();
 
   if (starField && clock) {
@@ -670,6 +707,21 @@ function syncSceneState(timeSeconds = 0) {
     ? updateWorldFog(worldFog, atmosphereState.ambientLevel, spawnState?.mode ?? 'land')
     : worldFog?.state ?? null;
 
+  if (meteors && clock) {
+    const meteorSpawnDeltaSeconds = isClockPaused(clock)
+      ? 0
+      : deltaSeconds * Math.abs(getClockSpeed(clock));
+    updateMeteorShowers(meteors, {
+      jd: getClockJD(clock),
+      lst: currentLST,
+      latitude: observerLatitude,
+      deltaSeconds: meteorSpawnDeltaSeconds,
+      sunAltitude: getSunAltitude(sunMoon),
+      observerPosition: observerWorldPosition,
+      timeSeconds,
+    });
+  }
+
   if (starField && sunMoon) {
     updateStarVisibility(starField, getSunAltitude(sunMoon));
   }
@@ -716,6 +768,7 @@ function syncSceneState(timeSeconds = 0) {
       spawnModeLabel: getSpawnModeLabel(),
       planetLines: formatPlanetHudLines(),
       sunMoonLines: formatSunMoonHudLines(),
+      meteorLines: formatMeteorHudLines(),
     });
   }
 
@@ -785,6 +838,7 @@ async function init() {
   starField = createStarField(scene, starCatalog);
   planets = createPlanets(scene);
   milkyWay = await createMilkyWay(scene);
+  meteors = createMeteorShowers(scene);
   sunMoon = createSunMoon(scene);
   atmosphere = createAtmosphere(scene);
   worldFog = createWorldFog(scene);
@@ -795,7 +849,7 @@ async function init() {
   constellationLines = createConstellationLines(scene, skyCultureData.constellations, starCatalog);
   hud = createHud({ visible: preferences.hudVisible });
   compass = createCompass();
-  labels = createLabels({ starField, planets, sunMoon });
+  labels = createLabels({ starField, planets, sunMoon, meteors });
   labels.hoverEnabled = inputProfile === 'desktop';
   clock = createClock(INITIAL_CLOCK_JD);
   setClockSpeed(clock, 360);
@@ -858,6 +912,9 @@ async function init() {
     onTogglePolaris: () => {
       applyPolarisPreference(!(polarisMarker?.marker.visible ?? false));
     },
+    onToggleMeteors: () => {
+      applyMeteorPreference(!tuning.meteors.enabled);
+    },
     onOpenInfo: () => {
       openInfo();
     },
@@ -888,6 +945,18 @@ async function init() {
     },
     onConstellationOpacityChange: (value) => {
       applySceneTuningPreference('constellationLines.opacity', 'constellationOpacity', value);
+    },
+    onMeteorShowerMultiplierChange: (value) => {
+      applySceneTuningPreference('meteors.showerMultiplier', 'meteorShowerMultiplier', value);
+    },
+    onMeteorSporadicRateChange: (value) => {
+      applySceneTuningPreference('meteors.sporadicRate', 'meteorSporadicRate', value);
+    },
+    onMeteorStreakBrightnessChange: (value) => {
+      applySceneTuningPreference('meteors.streakBrightness', 'meteorStreakBrightness', value);
+    },
+    onMeteorMinMagnitudeChange: (value) => {
+      applySceneTuningPreference('meteors.minMagnitude', 'meteorMinMagnitude', value);
     },
   });
   infoModal = createInfoModal();
@@ -931,6 +1000,8 @@ async function init() {
   setInputProfile(inputProfile);
   applyConstellationPreference(preferences.constellationsVisible, { persist: false });
   applyPolarisPreference(preferences.polarisVisible, { persist: false });
+  applyMeteorPreference(preferences.meteorsVisible, { persist: false });
+  applyMeteorRadiantPreference(preferences.meteorRadiantVisible, { persist: false });
   refreshSettingsModal();
   syncSceneState(0);
 
@@ -999,6 +1070,14 @@ window.addEventListener('keydown', (event) => {
     preferences = updatePreferences({ polarisVisible: visible });
     refreshSettingsModal();
     console.info(`Polaris marker ${visible ? 'shown' : 'hidden'}.`);
+    return;
+  }
+
+  if (event.code === 'KeyN' && meteors) {
+    const visible = toggleMeteorRadiantMarker(meteors);
+    preferences = updatePreferences({ meteorRadiantVisible: visible });
+    refreshSettingsModal();
+    console.info(`Meteor radiant marker ${visible ? 'shown' : 'hidden'}.`);
     return;
   }
 
@@ -1073,7 +1152,7 @@ function animate(frameTime) {
     });
   }
 
-  syncSceneState(safeFrameTime * 0.001);
+  syncSceneState(safeFrameTime * 0.001, realDeltaSeconds);
 
   if (ENABLE_BLOOM) {
     composer.render();
@@ -1126,4 +1205,28 @@ function formatSunMoonHudLines() {
   }
 
   return lines;
+}
+
+function formatMeteorHudLines() {
+  if (!meteors) {
+    return [];
+  }
+
+  if (!tuning.meteors.enabled) {
+    return ['met  off'];
+  }
+
+  const stats = getMeteorShowerStats(meteors);
+
+  if (!stats.activeShowerName || stats.activeRate <= 0.01) {
+    return [
+      `met  sporadic ${tuning.meteors.sporadicRate.toFixed(0)}/h  act ${stats.activeCount}`,
+      `sol  \u03bb ${stats.solarLongitude.toFixed(1)}\u00b0`,
+    ];
+  }
+
+  return [
+    `met  ${stats.activeShowerCode} ${stats.activeRate.toFixed(1)}/h  zhr ${stats.activeZHR.toFixed(1)}  act ${stats.activeCount}`,
+    `rad  alt ${stats.radiantAlt.toFixed(2)}\u00b0  az ${stats.radiantAz.toFixed(2)}\u00b0  \u03bb ${stats.solarLongitude.toFixed(1)}\u00b0`,
+  ];
 }

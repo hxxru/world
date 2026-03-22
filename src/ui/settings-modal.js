@@ -267,6 +267,7 @@ export function createSettingsModal({
   onToggleHud,
   onToggleConstellations,
   onTogglePolaris,
+  onToggleMeteors,
   onOpenInfo,
   onTimeSpeedChange,
   onDesktopLookSensitivityChange,
@@ -274,6 +275,10 @@ export function createSettingsModal({
   onBloomStrengthChange,
   onStarLimitingMagnitudeChange,
   onConstellationOpacityChange,
+  onMeteorShowerMultiplierChange,
+  onMeteorSporadicRateChange,
+  onMeteorStreakBrightnessChange,
+  onMeteorMinMagnitudeChange,
 } = {}) {
   const modal = createModal({ title: 'Settings' });
   const { body } = modal;
@@ -369,6 +374,12 @@ export function createSettingsModal({
     shortcut: 'M',
     onToggle: onTogglePolaris,
   });
+  const meteorsToggle = createToggleRow(displaySection, {
+    label: 'Meteor showers',
+    description: 'Procedural showers and sporadic meteors on dark nights.',
+    shortcut: 'Settings',
+    onToggle: onToggleMeteors,
+  });
 
   const controlsSection = createSection(body, 'Controls', 'Actions exposed here also remain available via keyboard shortcuts.');
   const profileRow = document.createElement('div');
@@ -449,6 +460,41 @@ export function createSettingsModal({
     step: 0.05,
     onInput: onConstellationOpacityChange,
   });
+  const meteorShowerMultiplier = createRangeRow(visualsSection, {
+    label: 'Meteor shower rate',
+    description: 'Scale the major-shower activity table.',
+    min: 0,
+    max: 4,
+    step: 0.1,
+    suffix: 'x',
+    onInput: onMeteorShowerMultiplierChange,
+  });
+  const meteorSporadicRate = createRangeRow(visualsSection, {
+    label: 'Sporadic rate',
+    description: 'Background meteors per hour outside major showers.',
+    min: 0,
+    max: 20,
+    step: 1,
+    suffix: '/h',
+    onInput: onMeteorSporadicRateChange,
+  });
+  const meteorBrightness = createRangeRow(visualsSection, {
+    label: 'Meteor brightness',
+    description: 'Overall streak intensity for visible meteors.',
+    min: 0.2,
+    max: 2,
+    step: 0.05,
+    suffix: 'x',
+    onInput: onMeteorStreakBrightnessChange,
+  });
+  const meteorMinMagnitude = createRangeRow(visualsSection, {
+    label: 'Meteor limiting magnitude',
+    description: 'Higher values allow fainter meteors to render.',
+    min: 1,
+    max: 6.5,
+    step: 0.5,
+    onInput: onMeteorMinMagnitudeChange,
+  });
 
   return {
     ...modal,
@@ -465,6 +511,7 @@ export function createSettingsModal({
       hudToggle.textContent = state.hudVisible ? 'On' : 'Off';
       constellationToggle.textContent = state.constellationsVisible ? 'On' : 'Off';
       polarisToggle.textContent = state.polarisVisible ? 'On' : 'Off';
+      meteorsToggle.textContent = state.meteorsVisible ? 'On' : 'Off';
       profileRow.textContent = `Active input profile: ${state.inputProfile}`;
       timeSpeedPresets.setActive(Math.abs(state.speedMultiplier));
       desktopLook.setValue(Number(state.desktopLookSensitivity.toFixed(4)));
@@ -472,6 +519,10 @@ export function createSettingsModal({
       bloomStrength.setValue(Number(state.bloomStrength.toFixed(2)));
       limitingMagnitude.setValue(Number(state.starLimitingMagnitude.toFixed(1)));
       constellationOpacity.setValue(Number(state.constellationOpacity.toFixed(2)));
+      meteorShowerMultiplier.setValue(Number(state.meteorShowerMultiplier.toFixed(1)));
+      meteorSporadicRate.setValue(Number(state.meteorSporadicRate.toFixed(0)));
+      meteorBrightness.setValue(Number(state.meteorStreakBrightness.toFixed(2)));
+      meteorMinMagnitude.setValue(Number(state.meteorMinMagnitude.toFixed(1)));
     },
   };
 }

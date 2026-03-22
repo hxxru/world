@@ -8,6 +8,8 @@ const DEFAULT_PREFERENCES = Object.freeze({
   hudVisible: false,
   constellationsVisible: true,
   polarisVisible: false,
+  meteorsVisible: tuning.meteors.enabled,
+  meteorRadiantVisible: false,
   hasSeenHelp: false,
   skyCultureId: 'korean',
   desktopLookSensitivity: tuning.player.desktopLookSensitivity,
@@ -15,6 +17,10 @@ const DEFAULT_PREFERENCES = Object.freeze({
   bloomStrength: tuning.bloom.strength,
   starLimitingMagnitude: tuning.stars.limitingMagnitude,
   constellationOpacity: tuning.constellationLines.opacity,
+  meteorShowerMultiplier: tuning.meteors.showerMultiplier,
+  meteorSporadicRate: tuning.meteors.sporadicRate,
+  meteorStreakBrightness: tuning.meteors.streakBrightness,
+  meteorMinMagnitude: tuning.meteors.minMagnitude,
 });
 
 let preferences = null;

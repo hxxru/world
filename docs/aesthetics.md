@@ -71,10 +71,12 @@ the game should feel noticeably different at each phase:
 
 ## in-game clock speed defaults
 
-- 1× (real-time): default. immersive. stars move perceptibly over minutes.
+- 1× (real-time): close inspection / skywatching.
 - 60× (1 real second = 1 game minute): for watching a night pass. sunrise/sunset in ~15 seconds.
-- 360× (1 real second = 6 game minutes): for scanning across days.
+- 360× (1 real second = 6 game minutes): default. good for scanning across days without immediately losing context.
 - 3600× (1 real second = 1 game hour): for scanning across weeks/months. constellations shift seasonally.
+
+speed is now selected from settings or the `1`-`4` hotkeys rather than a live slider.
 
 ## sound direction (post-MVP)
 
